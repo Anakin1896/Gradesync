@@ -6,6 +6,9 @@ class Section(models.Model):
     name = models.CharField(max_length=100)
     year_level = models.IntegerField(null=True, blank=True)
 
+    def __str__(self):
+        return self.name
+
 class Student(models.Model):
     student_id = models.AutoField(primary_key=True)
     student_number = models.CharField(unique=True, max_length=20)
@@ -16,3 +19,6 @@ class Student(models.Model):
     program = models.ForeignKey('core.Program', on_delete=models.SET_NULL, null=True, blank=True)
     current_year_level = models.IntegerField(default=1)
     is_regular = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.last_name}, {self.first_name} ({self.student_number})"

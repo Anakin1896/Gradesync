@@ -10,6 +10,9 @@ class ClassSchedule(models.Model):
     schedule_text = models.CharField(max_length=100, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
+    def __str__(self):
+        return f"{self.subject.code} - {self.section.name} ({self.teacher.last_name})"
+
 class TeacherSchedule(models.Model):
     schedule_id = models.AutoField(primary_key=True)
     teacher = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
@@ -27,6 +30,9 @@ class Enrollment(models.Model):
     final_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     remarks = models.CharField(max_length=20, null=True, blank=True)
     enrolled_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.student.last_name} enrolled in {self.class_field.subject.code}"
 
 class Attendance(models.Model):
     attendance_id = models.AutoField(primary_key=True)
@@ -48,6 +54,9 @@ class Assessment(models.Model):
     title = models.CharField(max_length=100)
     total_points = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
     date_given = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.component.name})"
 
 class StudentScore(models.Model):
     score_id = models.AutoField(primary_key=True)
