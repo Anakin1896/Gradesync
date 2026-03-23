@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'accounts',
     'students',
     'grading',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
