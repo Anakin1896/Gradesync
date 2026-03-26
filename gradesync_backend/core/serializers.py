@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Department, AcademicTerm, Program, Subject, Period
 
 class DepartmentSerializer(serializers.ModelSerializer):
-    class meta:
+    class Meta:
         model = Department
         fields = '__all__'
 
