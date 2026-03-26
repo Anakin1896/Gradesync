@@ -25,28 +25,30 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <div className="w-64 h-screen bg-[#1A1C29] text-white flex flex-col justify-between shrink-0">
-      <div>
-        {/* Brand Logo */}
-        <div className="pt-8 pb-6 px-6">
+    <div className="w-64 h-full bg-[#1A1C29] text-white flex flex-col shrink-0">
+
+      <div className="shrink-0">
+        <div className="pt-6 pb-4 px-6">
           <h1 className="text-2xl font-serif font-bold text-amber-400">
             Grade<span className="text-white">Sync</span>
           </h1>
         </div>
 
-        {/* User Profile Summary */}
-        <div className="flex flex-col items-center pb-8 border-b border-gray-700 mx-6 mb-6">
+        <div className="flex flex-col items-center pb-4 border-b border-gray-700 mx-6 mb-2">
           <div className="w-20 h-20 rounded-full border-2 border-amber-400 flex items-center justify-center bg-[#2A2D3E] mb-3">
             <span className="text-3xl font-serif font-bold text-amber-400">M</span>
           </div>
           <h2 className="font-semibold text-lg tracking-wide">Ms. Maria Santos</h2>
           <p className="text-xs text-gray-400 mt-1">Science Department</p>
         </div>
+      </div>
 
-        {/* Main Navigation */}
-        <div className="px-4">
-          <p className="text-xs font-bold text-gray-500 mb-3 px-2 tracking-wider">MAIN</p>
-          <div className="space-y-1">
+      <div className="flex-1 overflow-y-auto px-4 py-2">
+
+        <div className="mb-4">
+          <p className="text-[11px] font-bold text-gray-500 mb-2 px-2 tracking-wider">MAIN</p>
+          
+          <div className="space-y-0.5">
             {mainLinks.map((link) => {
               const Icon = link.icon;
               const isActive = activeTab === link.name;
@@ -54,13 +56,14 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 <button
                   key={link.name}
                   onClick={() => setActiveTab(link.name)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
+       
+                  className={`w-full flex items-center space-x-3 px-4 py-2 rounded-xl transition-colors text-sm ${
                     isActive 
-                      ? 'bg-amber-400 text-[#1A1C29] font-semibold shadow-lg' 
+                      ? 'bg-amber-400 text-[#1A1C29] font-semibold shadow-md' 
                       : 'text-gray-400 hover:text-white hover:bg-[#2A2D3E]'
                   }`}
                 >
-                  <Icon size={20} className={isActive ? 'text-[#1A1C29]' : ''} />
+                  <Icon size={18} className={isActive ? 'text-[#1A1C29]' : ''} />
                   <span>{link.name}</span>
                 </button>
               );
@@ -68,10 +71,9 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
           </div>
         </div>
 
-        {/* Account Navigation */}
-        <div className="px-4 mt-8">
-          <p className="text-xs font-bold text-gray-500 mb-3 px-2 tracking-wider">ACCOUNT</p>
-          <div className="space-y-1">
+        <div>
+          <p className="text-[11px] font-bold text-gray-500 mb-2 px-2 tracking-wider">ACCOUNT</p>
+          <div className="space-y-0.5">
             {accountLinks.map((link) => {
               const Icon = link.icon;
               const isActive = activeTab === link.name;
@@ -79,28 +81,29 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 <button
                   key={link.name}
                   onClick={() => setActiveTab(link.name)}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-colors ${
+                  className={`w-full flex items-center space-x-3 px-4 py-2 rounded-xl transition-colors text-sm ${
                     isActive 
-                      ? 'bg-amber-400 text-[#1A1C29] font-semibold shadow-lg' 
+                      ? 'bg-amber-400 text-[#1A1C29] font-semibold shadow-md' 
                       : 'text-gray-400 hover:text-white hover:bg-[#2A2D3E]'
                   }`}
                 >
-                  <Icon size={20} className={isActive ? 'text-[#1A1C29]' : ''} />
+                  <Icon size={18} className={isActive ? 'text-[#1A1C29]' : ''} />
                   <span>{link.name}</span>
                 </button>
               );
             })}
           </div>
         </div>
+
       </div>
 
-      {/* Logout Button */}
-      <div className="px-4 pb-8 pt-4">
-        <button className="w-full flex items-center space-x-3 px-4 py-3 text-red-400 hover:text-red-300 hover:bg-[#2A2D3E] rounded-xl transition-colors">
-          <LogOut size={20} />
+      <div className="shrink-0 px-4 py-4 border-t border-gray-800">
+        <button className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-[#2A2D3E] rounded-xl transition-colors">
+          <LogOut size={18} />
           <span className="font-medium">Logout</span>
         </button>
       </div>
+
     </div>
   );
 };
