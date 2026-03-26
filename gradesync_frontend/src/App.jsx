@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Profile from './components/Profile';
+import Settings from './components/Settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -10,6 +11,8 @@ function App() {
     switch (activeTab) {
       case 'Profile':
         return <Profile />;
+      case 'Settings':
+        return <Settings />;
       default:
         return (
           <div className="mt-8">
