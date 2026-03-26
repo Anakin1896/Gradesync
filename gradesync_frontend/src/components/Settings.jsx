@@ -11,11 +11,6 @@ const Settings = () => {
   return (
     <div className="max-w-3xl">
 
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">Settings</h1>
-        <p className="text-gray-500 mt-1">App preferences and configuration</p>
-      </div>
-
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h2 className="text-xl font-serif font-bold text-[#1A1C29] mb-6">App Settings</h2>
 
