@@ -87,7 +87,7 @@ const Attendance = () => {
           <select 
             value={selectedClass}
             onChange={(e) => setSelectedClass(e.target.value)}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-[#1A1C29] focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 cursor-pointer shadow-sm min-w-[220px]"
+            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-[#1A1C29] focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 cursor-pointer shadow-sm min-w-55"
           >
             <option>Gen. Biology 2 - STEM A</option>
             <option>Physics 1 - STEM B</option>
@@ -121,7 +121,7 @@ const Attendance = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-2">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse min-w-200">
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400 sticky left-0 bg-white z-10 w-48">
