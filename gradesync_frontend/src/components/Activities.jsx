@@ -1,170 +1,206 @@
 import React, { useState } from 'react';
-import { Plus, FileText, CheckCircle, Clock, Calendar, MoreVertical, BookOpen, Presentation } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 const Activities = () => {
-  const [filter, setFilter] = useState('All');
+
+  const [selectedClass, setSelectedClass] = useState('Gen. Biology 2 - STEM A');
+  const [periodFilter, setPeriodFilter] = useState('All Periods');
+  const [typeFilter, setTypeFilter] = useState('All');
 
   const [activities] = useState([
     {
       id: 1,
-      title: "Cell Division Lab Report",
-      type: "Assignment",
-      class: "Gen. Biology 2 - STEM A",
-      dueDate: "Mar 28, 2026",
-      status: "Pending",
-      submissions: 38,
-      totalStudents: 40,
+      period: 'Pre-Midterm',
+      title: 'Quiz 1 – Cell Biology',
+      type: 'Quiz',
+      date: 'Jan 10, 2026',
+      perfectScore: 50,
+      classAvg: 42.3,
+      highest: 49,
+      lowest: 30,
     },
     {
       id: 2,
-      title: "Unit 2 Quiz: Genetics",
-      type: "Quiz",
-      class: "Gen. Biology 2 - STEM A",
-      dueDate: "Mar 25, 2026",
-      status: "Graded",
-      submissions: 40,
-      totalStudents: 40,
+      period: 'Pre-Midterm',
+      title: 'Activity 1 – Lab Report',
+      type: 'Activity',
+      date: 'Jan 17, 2026',
+      perfectScore: 100,
+      classAvg: 85.7,
+      highest: 98,
+      lowest: 72,
     },
     {
       id: 3,
-      title: "Newton's Laws Worksheet",
-      type: "Assignment",
-      class: "Physics 1 - STEM B",
-      dueDate: "Mar 27, 2026",
-      status: "Pending",
-      submissions: 30,
-      totalStudents: 35,
+      period: 'Pre-Midterm',
+      title: 'Pre-Midterm Exam',
+      type: 'Exam',
+      date: 'Jan 28, 2026',
+      perfectScore: 100,
+      classAvg: 80.2,
+      highest: 95,
+      lowest: 62,
     },
     {
       id: 4,
-      title: "Ecosystem Diorama",
-      type: "Project",
-      class: "Gen. Biology 2 - STEM A",
-      dueDate: "Apr 15, 2026",
-      status: "Upcoming",
-      submissions: 0,
-      totalStudents: 40,
+      period: 'Midterm',
+      title: 'Quiz 2 – Genetics',
+      type: 'Quiz',
+      date: 'Feb 12, 2026',
+      perfectScore: 50,
+      classAvg: 39.8,
+      highest: 50,
+      lowest: 28,
     },
     {
       id: 5,
-      title: "Midterm Examination",
-      type: "Quiz",
-      class: "Physics 1 - STEM B",
-      dueDate: "Mar 20, 2026",
-      status: "Graded",
-      submissions: 35,
-      totalStudents: 35,
+      period: 'Midterm',
+      title: 'Midterm Exam',
+      type: 'Exam',
+      date: 'Feb 25, 2026',
+      perfectScore: 100,
+      classAvg: 82.5,
+      highest: 97,
+      lowest: 58,
     }
   ]);
 
-  const getTypeIcon = (type) => {
+  const getTypeBadge = (type) => {
     switch(type) {
-      case 'Assignment': return <FileText size={20} className="text-blue-500" />;
-      case 'Quiz': return <BookOpen size={20} className="text-purple-500" />;
-      case 'Project': return <Presentation size={20} className="text-pink-500" />;
-      default: return <FileText size={20} className="text-gray-500" />;
+      case 'Quiz': return <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold">Quiz</span>;
+      case 'Activity': return <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-bold">Activity</span>;
+      case 'Exam': return <span className="px-3 py-1 rounded-full bg-purple-50 text-purple-600 text-xs font-bold">Exam</span>;
+      default: return <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold">{type}</span>;
     }
   };
 
-  const getStatusBadge = (status) => {
-    switch(status) {
-      case 'Graded': 
-        return <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1.5"><CheckCircle size={14}/> Graded</span>;
-      case 'Pending': 
-        return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center gap-1.5"><Clock size={14}/> Needs Grading</span>;
-      case 'Upcoming': 
-        return <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold flex items-center gap-1.5"><Calendar size={14}/> Upcoming</span>;
-      default: return null;
-    }
-  };
+  let filteredActivities = activities;
 
-  const filteredActivities = filter === 'All' 
-    ? activities 
-    : activities.filter(a => a.type === filter);
+  if (typeFilter !== 'All') {
+    const typeMap = { 'Quizzes': 'Quiz', 'Activities': 'Activity', 'Exams': 'Exam' };
+    filteredActivities = filteredActivities.filter(a => a.type === typeMap[typeFilter]);
+  }
+
+  if (periodFilter !== 'All Periods') {
+    filteredActivities = filteredActivities.filter(a => a.period === periodFilter);
+  }
+
+  const groupedActivities = filteredActivities.reduce((groups, activity) => {
+    if (!groups[activity.period]) groups[activity.period] = [];
+    groups[activity.period].push(activity);
+    return groups;
+  }, {});
+
+  const periodOrder = ['Pre-Midterm', 'Midterm', 'Pre-Finals', 'Finals'];
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-6xl">
 
-      <div className="mb-8 flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">Activities</h1>
-          <p className="text-gray-500 mt-1">Manage assignments, quizzes, and projects</p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">Activities & Exams</h1>
+        <p className="text-gray-500 mt-1">Quizzes, activities, and exam records</p>
+      </div>
+
+      <div className="flex justify-between items-end mb-6">
+
+        <div className="flex gap-4">
+          <select 
+            value={selectedClass}
+            onChange={(e) => setSelectedClass(e.target.value)}
+            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-[#1A1C29] focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 cursor-pointer shadow-sm min-w-[220px]"
+          >
+            <option>Gen. Biology 2 - STEM A</option>
+            <option>Physics 1 - STEM B</option>
+          </select>
+
+          <select 
+            value={periodFilter}
+            onChange={(e) => setPeriodFilter(e.target.value)}
+            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-[#1A1C29] focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 cursor-pointer shadow-sm min-w-[160px]"
+          >
+            <option>All Periods</option>
+            <option>Pre-Midterm</option>
+            <option>Midterm</option>
+            <option>Pre-Finals</option>
+            <option>Finals</option>
+          </select>
         </div>
-        <button className="flex items-center space-x-2 bg-amber-400 hover:bg-amber-500 text-[#1A1C29] px-6 py-2.5 rounded-lg font-semibold transition-colors shadow-sm">
+
+        <button className="flex items-center space-x-2 bg-amber-400 hover:bg-amber-500 text-[#1A1C29] px-6 py-2.5 rounded-lg font-bold transition-colors shadow-sm">
           <Plus size={18} />
-          <span>Create Activity</span>
+          <span>Add Activity</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-        <div className="flex border-b border-gray-100 bg-[#FCFBF8] px-6 pt-4 gap-6">
-          {['All', 'Assignment', 'Quiz', 'Project'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`pb-4 text-sm font-semibold transition-colors relative ${
-                filter === tab ? 'text-[#1A1C29]' : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {tab}{tab !== 'All' ? 's' : ''}
-
-              {filter === tab && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-400 rounded-t-full" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        <div className="divide-y divide-gray-100">
-          {filteredActivities.map((activity) => (
-            <div key={activity.id} className="p-6 hover:bg-gray-50/50 transition-colors flex items-center justify-between group">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 mt-1">
-                  {getTypeIcon(activity.type)}
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#1A1C29] text-lg group-hover:text-amber-600 transition-colors cursor-pointer">
-                    {activity.title}
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1.5 text-sm text-gray-500 font-medium">
-                    <span className="text-[#1A1C29] bg-gray-100 px-2 py-0.5 rounded text-xs">{activity.class}</span>
-                    <span className="flex items-center gap-1"><Calendar size={14} className="text-gray-400"/> Due: {activity.dueDate}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-8">
-                <div className="text-right">
-                  <p className="text-[11px] font-bold text-gray-400 tracking-wider mb-1">SUBMISSIONS</p>
-                  <p className="font-semibold text-[#1A1C29]">
-                    <span className={activity.submissions === activity.totalStudents ? 'text-emerald-500' : ''}>
-                      {activity.submissions}
-                    </span>
-                    <span className="text-gray-400"> / {activity.totalStudents}</span>
-                  </p>
-                </div>
-
-                <div className="w-32 flex justify-end">
-                  {getStatusBadge(activity.status)}
-                </div>
-
-                <button className="p-2 text-gray-400 hover:text-[#1A1C29] hover:bg-gray-100 rounded-lg transition-colors">
-                  <MoreVertical size={20} />
-                </button>
-              </div>
-
-            </div>
-          ))}
-        </div>
-
-        {filteredActivities.length === 0 && (
-          <div className="p-12 text-center text-gray-500 font-medium">
-            No activities found for this category.
-          </div>
-        )}
-
+      <div className="flex gap-3 mb-8">
+        {['All', 'Quizzes', 'Activities', 'Exams'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setTypeFilter(tab)}
+            className={`px-5 py-1.5 rounded-full text-sm font-semibold transition-colors border ${
+              typeFilter === tab 
+                ? 'bg-amber-400 border-amber-400 text-[#1A1C29] shadow-sm' 
+                : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
+
+      {periodOrder.map(period => {
+        const periodActivities = groupedActivities[period];
+        if (!periodActivities || periodActivities.length === 0) return null;
+
+        return (
+          <div key={period} className="mb-8">
+
+            <div className="flex items-center gap-4 mb-4 pl-2">
+              <h2 className="text-[11px] font-bold text-indigo-500 tracking-widest uppercase bg-indigo-50 px-3 py-1 rounded">
+                {period}
+              </h2>
+              <div className="flex-1 h-px bg-gray-200"></div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400 w-[30%]">TITLE</th>
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400">TYPE</th>
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400">DATE</th>
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400 text-center">PERFECT SCORE</th>
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400 text-center">CLASS AVG</th>
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400 text-center">HIGHEST</th>
+                    <th className="py-4 px-6 font-semibold text-[11px] tracking-wider text-gray-400 text-center">LOWEST</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {periodActivities.map((activity) => (
+                    <tr key={activity.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
+                      <td className="py-4 px-6 text-sm font-bold text-[#1A1C29]">{activity.title}</td>
+                      <td className="py-4 px-6">{getTypeBadge(activity.type)}</td>
+                      <td className="py-4 px-6 text-sm text-gray-500 font-medium">{activity.date}</td>
+                      <td className="py-4 px-6 text-sm text-gray-500 font-medium text-center">{activity.perfectScore}</td>
+                      <td className="py-4 px-6 text-sm font-bold text-[#1A1C29] text-center">{activity.classAvg}</td>
+                      <td className="py-4 px-6 text-sm font-bold text-emerald-500 text-center">{activity.highest}</td>
+                      <td className="py-4 px-6 text-sm font-bold text-red-500 text-center">{activity.lowest}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        );
+      })}
+
+      {Object.keys(groupedActivities).length === 0 && (
+        <div className="p-12 text-center text-gray-500 font-medium bg-white rounded-2xl border border-gray-200">
+          No activities found for the selected filters.
+        </div>
+      )}
+
     </div>
   );
 };
