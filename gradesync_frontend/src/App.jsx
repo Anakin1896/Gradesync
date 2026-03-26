@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Profile from './components/Profile';
+import Attendance from './components/Attendance';
 import Settings from './components/Settings';
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -11,6 +13,8 @@ function App() {
     switch (activeTab) {
       case 'Profile':
         return <Profile />;
+      case 'Attendance':
+        return <Attendance />;
       case 'Settings':
         return <Settings />;
       default:
