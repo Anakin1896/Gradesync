@@ -41,10 +41,6 @@ const Students = () => {
 
   return (
     <div className="max-w-6xl relative">
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">Students</h1>
-        <p className="text-gray-500 mt-1">Manage your class lists and student records</p>
-      </div>
 
       <div className="flex justify-between items-end mb-6">
         <select 
