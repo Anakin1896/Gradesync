@@ -1,57 +1,105 @@
-import React from 'react';
-import { Edit3 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Edit2, Loader2 } from 'lucide-react';
 
 const Profile = () => {
-  
-  const teacherData = {
-    name: "Ms. Maria B. Santos",
-    role: "Science Department · Teacher II",
-    email: "maria.santos@deped.gov.ph",
-    employeeNo: "2021-0042",
-    department: "Science",
-    school: "Naga City NHS",
-    subjectsHandled: 5
-  };
+  const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const getAuthHeaders = () => ({
+    'Content-Type': 'application/json',
+    'Authorization': `Token ${localStorage.getItem('auth_token')}` 
+  });
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8000/api/accounts/profile/', {
+      method: 'GET',
+      headers: getAuthHeaders(),
+    })
+      .then(res => res.json())
+      .then(data => {
+        setProfileData(data);
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch profile:", err);
+        setIsLoading(false);
+      });
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-500">
+        <Loader2 className="animate-spin mr-2" /> Loading profile...
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return <div className="text-red-500">Failed to load profile data. Please ensure you are logged in.</div>;
+  }
+
+  const prefix = profileData.title_prefix ? `${profileData.title_prefix} ` : '';
+  const mi = profileData.middle_initial ? `${profileData.middle_initial} ` : '';
+  const fullName = `${prefix}${profileData.first_name} ${mi}${profileData.last_name}`;
+
+  const initial = profileData.first_name ? profileData.first_name.charAt(0).toUpperCase() : 'U';
 
   return (
-    <div className="max-w-3xl">
-      
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+    <div className="max-w-4xl animate-in fade-in duration-300">
+      <div className="mb-8">
+        <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">My Profile</h1>
+        <p className="text-gray-500 mt-1">Your account information</p>
+      </div>
 
-        <div className="flex items-center space-x-6 mb-8">
-          <div className="w-24 h-24 rounded-full border-4 border-[#1A1C29] flex items-center justify-center bg-[#1A1C29] shrink-0 shadow-md">
-            <span className="text-4xl font-serif font-bold text-amber-400">M</span>
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-8">
+        
+
+        <div className="flex items-start gap-6 mb-10 border-b border-gray-50 pb-8">
+
+          <div className="w-24 h-24 rounded-full bg-[#1A1C29] flex items-center justify-center border-4 border-amber-400 shrink-0 shadow-sm">
+            <span className="text-4xl font-serif font-bold text-amber-400">{initial}</span>
           </div>
-          <div>
-            <h2 className="text-2xl font-serif font-bold text-[#1A1C29]">{teacherData.name}</h2>
-            <p className="text-sm text-gray-500 mt-1">{teacherData.role}</p>
-            <p className="text-sm text-amber-600 mt-1">{teacherData.email}</p>
+          
+          <div className="pt-2">
+            <h2 className="text-2xl font-serif font-bold text-[#1A1C29]">{fullName}</h2>
+            <p className="text-sm font-medium text-gray-500 mt-1">
+              {profileData.department || 'No Department'} · {profileData.position_title || profileData.role}
+            </p>
+            <p className="text-sm font-medium text-amber-500 mt-1">
+              {profileData.email}
+            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-[#FCFBF8] p-4 rounded-xl border border-gray-100">
+
+          <div className="bg-[#FCFBF8] p-5 rounded-xl border border-gray-100">
             <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">EMPLOYEE NO.</p>
-            <p className="font-semibold text-[#1A1C29]">{teacherData.employeeNo}</p>
+            <p className="font-bold text-[#1A1C29] text-lg">{profileData.employee_id || 'N/A'}</p>
           </div>
-          <div className="bg-[#FCFBF8] p-4 rounded-xl border border-gray-100">
+
+          <div className="bg-[#FCFBF8] p-5 rounded-xl border border-gray-100">
             <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">DEPARTMENT</p>
-            <p className="font-semibold text-[#1A1C29]">{teacherData.department}</p>
+            <p className="font-bold text-[#1A1C29] text-lg">{profileData.department || 'N/A'}</p>
           </div>
-          <div className="bg-[#FCFBF8] p-4 rounded-xl border border-gray-100">
+
+          <div className="bg-[#FCFBF8] p-5 rounded-xl border border-gray-100">
             <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">SCHOOL</p>
-            <p className="font-semibold text-[#1A1C29]">{teacherData.school}</p>
+            <p className="font-bold text-[#1A1C29] text-lg">{profileData.school_name || 'N/A'}</p>
           </div>
-          <div className="bg-[#FCFBF8] p-4 rounded-xl border border-gray-100">
+
+          <div className="bg-[#FCFBF8] p-5 rounded-xl border border-gray-100">
             <p className="text-[10px] font-bold text-gray-400 tracking-wider mb-1">SUBJECTS HANDLED</p>
-            <p className="font-semibold text-[#1A1C29]">{teacherData.subjectsHandled}</p>
+            <p className="font-bold text-[#1A1C29] text-lg">5</p> 
           </div>
+
         </div>
 
-        <button className="flex items-center space-x-2 bg-amber-400 hover:bg-amber-500 text-[#1A1C29] px-6 py-2.5 rounded-lg font-semibold transition-colors shadow-sm">
-          <Edit3 size={18} />
+        <button className="flex items-center space-x-2 bg-amber-400 hover:bg-amber-500 text-[#1A1C29] px-6 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm">
+          <Edit2 size={16} />
           <span>Edit Profile</span>
         </button>
+
       </div>
     </div>
   );
