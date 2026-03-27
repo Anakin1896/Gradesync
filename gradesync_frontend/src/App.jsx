@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import Sidebar from './components/Sidebar';
+import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
 import Students from './components/Students';
 import Grades from './components/Grades';
@@ -14,6 +15,8 @@ function App() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'Dashboard':
+        return <Dashboard />;
       case 'Profile':
         return <Profile />;
       case 'Students':
