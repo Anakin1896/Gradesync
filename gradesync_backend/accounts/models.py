@@ -16,3 +16,13 @@ class User(AbstractUser):
         prefix = f"{self.title_prefix} " if self.title_prefix else ""
         mi = f"{self.middle_initial} " if self.middle_initial else ""
         return f"{prefix}{self.first_name} {mi}{self.last_name} ({self.employee_id})"
+
+class UserSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='settings')
+    notifications_enabled = models.BooleanField(default=True)
+    active_school_year = models.CharField(max_length=20, default="2025-2026")
+    grading_system = models.CharField(max_length=50, default="75 (DepEd)")
+    language = models.CharField(max_length=20, default="English (PH)")
+
+    def __str__(self):
+        return f"Settings for {self.user.last_name}"

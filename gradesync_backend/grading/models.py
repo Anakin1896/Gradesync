@@ -7,6 +7,9 @@ class ClassSchedule(models.Model):
     section = models.ForeignKey('students.Section', on_delete=models.CASCADE)
     teacher = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
     room = models.CharField(max_length=50)
+    days_of_week = models.CharField(max_length=50, help_text="e.g., M-W-F or T-Th")
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
     schedule_text = models.CharField(max_length=100, null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -52,6 +55,15 @@ class Assessment(models.Model):
     component = models.ForeignKey(GradingComponent, on_delete=models.CASCADE)
     period = models.ForeignKey('core.Period', on_delete=models.SET_NULL, null=True, blank=True)
     title = models.CharField(max_length=100)
+
+    ASSESSMENT_TYPES = [
+        ('Quiz', 'Quiz'),
+        ('Activity', 'Activity'),
+        ('Exam', 'Exam'),
+        ('Project', 'Project')
+    ]
+    assessment_type = models.CharField(max_length=20, choices=ASSESSMENT_TYPES, default='Activity')
+
     total_points = models.DecimalField(max_digits=5, decimal_places=2, default=100.00)
     date_given = models.DateField(null=True, blank=True)
 
@@ -63,3 +75,15 @@ class StudentScore(models.Model):
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
     score = models.DecimalField(max_digits=5, decimal_places=2)
+
+class PeriodGrade(models.Model):
+    grade_id = models.AutoField(primary_key=True)
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='period_grades')
+    period = models.ForeignKey('core.Period', on_delete=models.CASCADE)
+    computed_grade = models.DecimalField(max_digits=5, decimal_places=2)
+
+    class Meta:
+        unique_together = ('enrollment', 'period')
+
+    def __str__(self):
+        return f"{self.enrollment.student.last_name} - {self.period.name}: {self.computed_grade}"
