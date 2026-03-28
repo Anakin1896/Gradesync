@@ -1,28 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 
 const Attendance = () => {
-
   const [selectedClass, setSelectedClass] = useState('Gen. Biology 2 - STEM A');
   const [selectedMonth, setSelectedMonth] = useState('March 2026');
 
-  const [students] = useState([
-    { id: 1, name: 'Alcantara, Juan M.' },
-    { id: 2, name: 'Bautista, Ana R.' },
-    { id: 3, name: 'Cruz, Carlo P.' },
-    { id: 4, name: 'Dela Rosa, Mia C.' },
-    { id: 5, name: 'Enriquez, Paolo S.' },
-  ]);
+  const [tableData, setTableData] = useState([]);
+  const [attendanceDates, setAttendanceDates] = useState([]);
+  const [records, setRecords] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [dates, setDates] = useState(['MAR 3', 'MAR 5', 'MAR 10', 'MAR 12', 'MAR 17', 'MAR 19', 'MAR 24', 'MAR 26']);
+  useEffect(() => {
 
-  const [records, setRecords] = useState({
-    '1-MAR 3': 'P', '1-MAR 5': 'P', '1-MAR 10': 'P', '1-MAR 12': 'L', '1-MAR 17': 'P', '1-MAR 19': 'P', '1-MAR 24': 'P', '1-MAR 26': 'P',
-    '2-MAR 3': 'P', '2-MAR 5': 'P', '2-MAR 10': 'P', '2-MAR 12': 'P', '2-MAR 17': 'P', '2-MAR 19': 'P', '2-MAR 24': 'P', '2-MAR 26': 'P',
-    '3-MAR 3': 'P', '3-MAR 5': 'A', '3-MAR 10': 'A', '3-MAR 12': 'P', '3-MAR 17': 'L', '3-MAR 19': 'P', '3-MAR 24': 'A', '3-MAR 26': 'P',
-    '4-MAR 3': 'P', '4-MAR 5': 'P', '4-MAR 10': 'P', '4-MAR 12': 'E', '4-MAR 17': 'P', '4-MAR 19': 'P', '4-MAR 24': 'P', '4-MAR 26': 'P',
-    '5-MAR 3': 'A', '5-MAR 5': 'A', '5-MAR 10': 'P', '5-MAR 12': 'A', '5-MAR 17': 'P', '5-MAR 19': 'A', '5-MAR 24': 'P', '5-MAR 26': 'P',
-  });
+    setIsLoading(false);
+  }, []);
 
   const toggleAttendance = (studentId, date) => {
     const key = `${studentId}-${date}`;
@@ -42,8 +33,8 @@ const Attendance = () => {
 
   const handleAddDate = () => {
     const newDate = window.prompt("Enter new class date (e.g., MAR 28):");
-    if (newDate && !dates.includes(newDate.toUpperCase())) {
-      setDates([...dates, newDate.toUpperCase()]);
+    if (newDate && !attendanceDates.includes(newDate.toUpperCase())) {
+      setAttendanceDates([...attendanceDates, newDate.toUpperCase()]);
     }
   };
 
@@ -62,7 +53,7 @@ const Attendance = () => {
     let absent = 0;
     let totalMarked = 0;
 
-    dates.forEach(date => {
+    attendanceDates.forEach(date => {
       const status = records[`${studentId}-${date}`];
       if (status) totalMarked++;
       if (status === 'P') present++;
@@ -74,6 +65,7 @@ const Attendance = () => {
   };
 
   const getRateBadgeStyle = (rate) => {
+    if (rate === 0) return 'bg-gray-100 text-gray-500';
     if (rate >= 90) return 'bg-emerald-100 text-emerald-700';
     if (rate >= 75) return 'bg-amber-100 text-amber-700';
     return 'bg-red-100 text-red-700';
@@ -81,7 +73,6 @@ const Attendance = () => {
 
   return (
     <div className="max-w-6xl">
-
       <div className="flex justify-between items-end mb-6">
         <div className="flex gap-4">
           <select 
@@ -128,7 +119,7 @@ const Attendance = () => {
                   STUDENT
                 </th>
 
-                {dates.map((date, index) => (
+                {attendanceDates.map((date, index) => (
                   <th key={index} className="py-4 px-2 font-semibold text-[11px] tracking-wider text-gray-400 text-center w-16">
                     {date}
                   </th>
@@ -140,40 +131,49 @@ const Attendance = () => {
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => {
-                const totals = calculateTotals(student.id);
-                
-                return (
-                  <tr key={student.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4 + attendanceDates.length} className="text-center py-12 text-gray-500">Loading attendance data...</td>
+                </tr>
+              ) : tableData.length === 0 ? (
+                <tr>
+                  <td colSpan={4 + attendanceDates.length} className="text-center py-12 text-gray-500 italic">No students found.</td>
+                </tr>
+              ) : (
+                tableData.map((student) => {
+                  const totals = calculateTotals(student.id);
+                  
+                  return (
+                    <tr key={student.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
+                      <td className="py-4 px-6 text-sm font-semibold text-[#1A1C29] sticky left-0 bg-white group-hover:bg-gray-50/50">
+                        {student.name}
+                      </td>
 
-                    <td className="py-4 px-6 text-sm font-semibold text-[#1A1C29] sticky left-0 bg-white group-hover:bg-gray-50/50">
-                      {student.name}
-                    </td>
+                      {attendanceDates.map((date, colIndex) => {
+                        const status = records[`${student.id}-${date}`];
+                        return (
+                          <td key={colIndex} className="py-4 px-2 text-center">
+                            <button
+                              onClick={() => toggleAttendance(student.id, date)}
+                              className={`w-full h-8 flex items-center justify-center font-bold text-sm transition-colors hover:bg-gray-100 rounded cursor-pointer ${getStatusColor(status)}`}
+                            >
+                              {status || '-'}
+                            </button>
+                          </td>
+                        );
+                      })}
 
-                    {dates.map((date, colIndex) => {
-                      const status = records[`${student.id}-${date}`];
-                      return (
-                        <td key={colIndex} className="py-4 px-2 text-center">
-                          <button
-                            onClick={() => toggleAttendance(student.id, date)}
-                            className={`w-full h-8 flex items-center justify-center font-bold text-sm transition-colors hover:bg-gray-100 rounded cursor-pointer ${getStatusColor(status)}`}
-                          >
-                            {status || '-'}
-                          </button>
-                        </td>
-                      );
-                    })}
-
-                    <td className="py-4 px-4 text-center font-semibold text-sm text-emerald-500 border-l border-gray-100">{totals.present}</td>
-                    <td className="py-4 px-4 text-center font-semibold text-sm text-red-500">{totals.absent}</td>
-                    <td className="py-4 px-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block w-14 text-center ${getRateBadgeStyle(totals.rate)}`}>
-                        {totals.rate}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                      <td className="py-4 px-4 text-center font-semibold text-sm text-emerald-500 border-l border-gray-100">{totals.present}</td>
+                      <td className="py-4 px-4 text-center font-semibold text-sm text-red-500">{totals.absent}</td>
+                      <td className="py-4 px-4 text-center">
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold inline-block w-14 text-center ${getRateBadgeStyle(totals.rate)}`}>
+                          {totals.rate}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>

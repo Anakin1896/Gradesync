@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, X, Edit2 } from 'lucide-react';
 
 const Students = () => {
@@ -6,13 +6,13 @@ const Students = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
 
-  const [students, setStudents] = useState([
-    { id: 1, name: 'Alcantara, Juan M.', studentNo: '2023-0001', sex: 'M', standing: 'Regular', avgGrade: 88.4, attendance: 97 },
-    { id: 2, name: 'Bautista, Ana R.', studentNo: '2023-0002', sex: 'F', standing: 'Regular', avgGrade: 93.0, attendance: 100 },
-    { id: 3, name: 'Cruz, Carlo P.', studentNo: '2023-0003', sex: 'M', standing: 'Conditional', avgGrade: 74.1, attendance: 81 },
-    { id: 4, name: 'Dela Rosa, Mia C.', studentNo: '2023-0004', sex: 'F', standing: 'Regular', avgGrade: 90.5, attendance: 95 },
-    { id: 5, name: 'Enriquez, Paolo S.', studentNo: '2023-0005', sex: 'M', standing: 'At Risk', avgGrade: 68.3, attendance: 72 },
-  ]);
+  const [tableData, setTableData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // API Fetch will go here
+    setIsLoading(false);
+  }, []);
 
   const getStandingBadge = (standing) => {
     switch(standing) {
@@ -41,7 +41,6 @@ const Students = () => {
 
   return (
     <div className="max-w-6xl relative">
-
       <div className="flex justify-between items-end mb-6">
         <select 
           value={selectedClass}
@@ -74,32 +73,39 @@ const Students = () => {
               </tr>
             </thead>
             <tbody>
-              {students.map((student, index) => (
-                <tr key={student.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                  <td className="py-4 px-6 text-sm text-gray-400">{index + 1}</td>
-                  <td className="py-4 px-6 text-sm font-bold text-[#1A1C29]">{student.name}</td>
-                  <td className="py-4 px-6 text-sm text-gray-500">{student.studentNo}</td>
-                  <td className="py-4 px-6 text-center">{getSexBadge(student.sex)}</td>
-                  <td className="py-4 px-6 text-center">{getStandingBadge(student.standing)}</td>
-
-                  <td className={`py-4 px-6 text-sm font-bold text-center ${student.avgGrade < 75 ? 'text-red-500' : 'text-[#1A1C29]'}`}>
-                    {student.avgGrade.toFixed(1)}
-                  </td>
-
-                  <td className={`py-4 px-6 text-sm font-bold text-center ${student.attendance < 80 ? 'text-red-500' : 'text-emerald-500'}`}>
-                    {student.attendance}%
-                  </td>
-                  
-                  <td className="py-4 px-6 text-right">
-                    <button 
-                      onClick={() => openEditModal(student)}
-                      className="text-amber-600 hover:text-amber-700 font-semibold text-sm flex items-center justify-end gap-1 w-full transition-colors"
-                    >
-                      Edit <Edit2 size={14} className="ml-1"/>
-                    </button>
-                  </td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-12 text-gray-500">Loading students...</td>
                 </tr>
-              ))}
+              ) : tableData.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-12 text-gray-500 italic">No students enrolled in this class.</td>
+                </tr>
+              ) : (
+                tableData.map((student, index) => (
+                  <tr key={student.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                    <td className="py-4 px-6 text-sm text-gray-400">{index + 1}</td>
+                    <td className="py-4 px-6 text-sm font-bold text-[#1A1C29]">{student.name}</td>
+                    <td className="py-4 px-6 text-sm text-gray-500">{student.studentNo}</td>
+                    <td className="py-4 px-6 text-center">{getSexBadge(student.sex)}</td>
+                    <td className="py-4 px-6 text-center">{getStandingBadge(student.standing)}</td>
+                    <td className={`py-4 px-6 text-sm font-bold text-center ${student.avgGrade < 75 ? 'text-red-500' : 'text-[#1A1C29]'}`}>
+                      {student.avgGrade.toFixed(1)}
+                    </td>
+                    <td className={`py-4 px-6 text-sm font-bold text-center ${student.attendance < 80 ? 'text-red-500' : 'text-emerald-500'}`}>
+                      {student.attendance}%
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <button 
+                        onClick={() => openEditModal(student)}
+                        className="text-amber-600 hover:text-amber-700 font-semibold text-sm flex items-center justify-end gap-1 w-full transition-colors"
+                      >
+                        Edit <Edit2 size={14} className="ml-1"/>
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -108,7 +114,6 @@ const Students = () => {
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#1A1C29]/40 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-
             <div className="flex justify-between items-center p-6 border-b border-gray-100">
               <h2 className="text-xl font-serif font-bold text-[#1A1C29]">Edit Student</h2>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors">
@@ -174,11 +179,9 @@ const Students = () => {
                 Save Changes
               </button>
             </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 };

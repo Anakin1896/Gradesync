@@ -1,78 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download } from 'lucide-react';
 
 const Grades = () => {
   const [selectedClass, setSelectedClass] = useState('Gen. Biology 2 - STEM A');
 
-  const [students] = useState([
-    {
-      id: 1,
-      name: 'Alcantara, Juan M.',
-      preMid: 86,
-      midterm: 88,
-      preFinals: 90,
-      finals: 89,
-      finalGrade: 88.4,
-      remark: 'Passed'
-    },
-    {
-      id: 2,
-      name: 'Bautista, Ana R.',
-      preMid: 92,
-      midterm: 94,
-      preFinals: 93,
-      finals: 93,
-      finalGrade: 93.0,
-      remark: 'Passed'
-    },
-    {
-      id: 3,
-      name: 'Cruz, Carlo P.',
-      preMid: 72,
-      midterm: 75,
-      preFinals: 74,
-      finals: 75,
-      finalGrade: 74.1,
-      remark: 'Conditional'
-    },
-    {
-      id: 4,
-      name: 'Dela Rosa, Mia C.',
-      preMid: 89,
-      midterm: 91,
-      preFinals: 90,
-      finals: 92,
-      finalGrade: 90.5,
-      remark: 'Passed'
-    },
-    {
-      id: 5,
-      name: 'Enriquez, Paolo S.',
-      preMid: 65,
-      midterm: 70,
-      preFinals: 68,
-      finals: 70,
-      finalGrade: 68.3,
-      remark: 'Failed'
-    }
-  ]);
+  const [tableData, setTableData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+
+    setIsLoading(false);
+  }, []);
 
   const getRemarkBadge = (remark) => {
     switch(remark) {
-      case 'Passed':
-        return <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">Passed</span>;
-      case 'Conditional':
-        return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Conditional</span>;
-      case 'Failed':
-        return <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">Failed</span>;
-      default:
-        return <span>{remark}</span>;
+      case 'Passed': return <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">Passed</span>;
+      case 'Conditional': return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Conditional</span>;
+      case 'Failed': return <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">Failed</span>;
+      default: return <span>{remark}</span>;
     }
   };
 
   return (
     <div className="max-w-6xl">
-
       <div className="flex justify-between items-end mb-6">
         <select 
           value={selectedClass}
@@ -90,7 +40,6 @@ const Grades = () => {
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-6">
-        
         <h2 className="text-lg font-serif font-bold text-[#1A1C29] mb-6 px-2">
           Grade Summary – 4 Grading Periods
         </h2>
@@ -100,7 +49,6 @@ const Grades = () => {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="py-4 px-4 font-semibold text-[11px] tracking-wider text-gray-400 w-[25%]">STUDENT</th>
-
                 <th className="py-4 px-4 text-center">
                   <span className="px-3 py-1 rounded-full bg-purple-100 text-purple-600 text-[10px] font-bold tracking-wider uppercase">Pre-Mid</span>
                 </th>
@@ -113,31 +61,36 @@ const Grades = () => {
                 <th className="py-4 px-4 text-center">
                   <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-600 text-[10px] font-bold tracking-wider uppercase">Finals</span>
                 </th>
-                
                 <th className="py-4 px-4 font-semibold text-[11px] tracking-wider text-gray-400 text-center">FINAL GRADE</th>
                 <th className="py-4 px-4 font-semibold text-[11px] tracking-wider text-gray-400 text-center">REMARKS</th>
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => (
-                <tr key={student.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
-
-                  <td className="py-4 px-4 text-sm font-semibold text-[#1A1C29]">{student.name}</td>
-
-                  <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.preMid}</td>
-                  <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.midterm}</td>
-                  <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.preFinals}</td>
-                  <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.finals}</td>
-
-                  <td className={`py-4 px-4 text-sm font-bold text-center ${student.finalGrade < 75 ? 'text-red-500' : 'text-[#1A1C29]'}`}>
-                    {student.finalGrade.toFixed(1)}
-                  </td>
-
-                  <td className="py-4 px-4 text-center">
-                    {getRemarkBadge(student.remark)}
-                  </td>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="7" className="text-center py-12 text-gray-500">Loading grades...</td>
                 </tr>
-              ))}
+              ) : tableData.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="text-center py-12 text-gray-500 italic">No grading data found.</td>
+                </tr>
+              ) : (
+                tableData.map((student) => (
+                  <tr key={student.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
+                    <td className="py-4 px-4 text-sm font-semibold text-[#1A1C29]">{student.name}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.preMid || '-'}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.midterm || '-'}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.preFinals || '-'}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-gray-600 text-center">{student.finals || '-'}</td>
+                    <td className={`py-4 px-4 text-sm font-bold text-center ${student.finalGrade < 75 ? 'text-red-500' : 'text-[#1A1C29]'}`}>
+                      {student.finalGrade ? student.finalGrade.toFixed(1) : '-'}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {getRemarkBadge(student.remark || 'N/A')}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

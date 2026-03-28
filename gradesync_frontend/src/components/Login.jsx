@@ -20,13 +20,13 @@ const Login = () => {
     special: /[!@#$%^&*(),.?":{}|<>]/.test(newPassword)
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
+
+    console.log("Attempting to log in with:", employeeId);
 
     if (employeeId.toLowerCase() === 'new') {
       setIsFirstLogin(true);
-    } else {
-      alert(`Logging in with ID: ${employeeId}`);
     }
   };
 

@@ -4,24 +4,37 @@ import { Edit2, Loader2 } from 'lucide-react';
 const Profile = () => {
   const [profileData, setProfileData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
-    'Authorization': `Token ${localStorage.getItem('auth_token')}` 
+    'Authorization': `Bearer ${localStorage.getItem('auth_token')}` 
   });
 
   useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token) {
+      setError("Please log in to view your profile.");
+      setIsLoading(false);
+      return;
+    }
+
     fetch('http://127.0.0.1:8000/api/accounts/profile/', {
       method: 'GET',
       headers: getAuthHeaders(),
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error("Unauthorized");
+        return res.json();
+      })
       .then(data => {
         setProfileData(data);
         setIsLoading(false);
       })
       .catch(err => {
         console.error("Failed to fetch profile:", err);
+        setError("Failed to load profile data. Your session may have expired.");
         setIsLoading(false);
       });
   }, []);
@@ -34,8 +47,12 @@ const Profile = () => {
     );
   }
 
-  if (!profileData) {
-    return <div className="text-red-500">Failed to load profile data. Please ensure you are logged in.</div>;
+  if (error || !profileData) {
+    return (
+      <div className="flex items-center justify-center h-64 text-red-400 font-medium bg-red-50/50 rounded-xl border border-red-100 max-w-4xl">
+        {error}
+      </div>
+    );
   }
 
   const prefix = profileData.title_prefix ? `${profileData.title_prefix} ` : '';
