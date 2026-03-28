@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
+import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import Profile from './components/Profile';
@@ -12,6 +13,12 @@ import Settings from './components/Settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    window.location.reload();
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -38,6 +45,11 @@ function App() {
         );
     }
   };
+
+  const token = localStorage.getItem('auth_token');
+  if (!token) {
+    return <Login />;
+  }
 
   return (
     <div className="flex h-screen bg-[#FCFBF8] font-sans">
