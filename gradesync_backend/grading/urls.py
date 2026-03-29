@@ -13,6 +13,7 @@ router.register(r'student-scores', views.StudentScoreViewSet)
 
 urlpatterns = [
 
+    path('quick-enroll/', views.QuickEnrollView.as_view(), name='quick-enroll'),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
     path('', include(router.urls)),
 ]

@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from students.models import Student
 from .models import ClassSchedule, TeacherSchedule, Enrollment, Attendance, GradingComponent, Assessment, StudentScore
 from .serializers import (
     ClassScheduleSerializer, TeacherScheduleSerializer, EnrollmentSerializer, 
@@ -64,3 +65,28 @@ class DashboardView(APIView):
         }
         
         return Response(data)
+    
+class QuickEnrollView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        data = request.data
+        user = request.user
+
+        schedule = ClassSchedule.objects.filter(teacher=user, is_active=True).first()
+        
+        if not schedule:
+            return Response({'error': 'No active classes found for this teacher.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        student, created = Student.objects.get_or_create(
+            student_number=data.get('student_number'),
+            defaults={
+                'first_name': data.get('first_name'),
+                'last_name': data.get('last_name'),
+                'sex': data.get('sex', 'M'),
+            }
+        )
+
+        Enrollment.objects.get_or_create(class_field=schedule, student=student)
+
+        return Response({'message': 'Student enrolled successfully!'}, status=status.HTTP_201_CREATED)
