@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -10,7 +10,10 @@ import {
   LogOut 
 } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, handleLogout }) => {
+  const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   const mainLinks = [
     { name: 'Dashboard', icon: LayoutDashboard },
     { name: 'Students', icon: Users },
@@ -24,6 +27,44 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { name: 'Settings', icon: Settings },
   ];
 
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+
+    fetch('http://127.0.0.1:8000/api/accounts/profile/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          setProfileData(data);
+        }
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch sidebar profile:", err);
+        setIsLoading(false);
+      });
+  }, []);
+
+  let displayName = "Loading...";
+  let initial = "";
+  let department = "Loading...";
+
+  if (!isLoading && profileData) {
+    const prefix = profileData.title_prefix ? `${profileData.title_prefix} ` : '';
+    displayName = `${prefix}${profileData.first_name} ${profileData.last_name}`;
+    initial = profileData.first_name ? profileData.first_name.charAt(0).toUpperCase() : 'U';
+    department = profileData.department || 'No Department';
+  }
+
   return (
     <div className="w-64 h-full bg-[#1A1C29] text-white flex flex-col shrink-0">
 
@@ -36,10 +77,16 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
 
         <div className="flex flex-col items-center pb-4 border-b border-gray-700 mx-6 mb-2">
           <div className="w-20 h-20 rounded-full border-2 border-amber-400 flex items-center justify-center bg-[#2A2D3E] mb-3">
-            <span className="text-3xl font-serif font-bold text-amber-400">M</span>
+            <span className="text-3xl font-serif font-bold text-amber-400">
+              {isLoading ? '...' : initial}
+            </span>
           </div>
-          <h2 className="font-semibold text-lg tracking-wide">Ms. Maria Santos</h2>
-          <p className="text-xs text-gray-400 mt-1">Science Department</p>
+          <h2 className="font-semibold text-lg tracking-wide text-center leading-tight mb-1">
+            {displayName}
+          </h2>
+          <p className="text-xs text-gray-400 text-center">
+            {department}
+          </p>
         </div>
       </div>
 
@@ -56,7 +103,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
                 <button
                   key={link.name}
                   onClick={() => setActiveTab(link.name)}
-       
                   className={`w-full flex items-center space-x-3 px-4 py-2 rounded-xl transition-colors text-sm ${
                     isActive 
                       ? 'bg-amber-400 text-[#1A1C29] font-semibold shadow-md' 
@@ -98,7 +144,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
       </div>
 
       <div className="shrink-0 px-4 py-4 border-t border-gray-800">
-        <button className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-[#2A2D3E] rounded-xl transition-colors">
+        <button 
+          onClick={handleLogout}
+          className="w-full flex items-center space-x-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-[#2A2D3E] rounded-xl transition-colors"
+        >
           <LogOut size={18} />
           <span className="font-medium">Logout</span>
         </button>

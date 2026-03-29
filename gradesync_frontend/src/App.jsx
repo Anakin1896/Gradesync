@@ -54,7 +54,11 @@ function App() {
   return (
     <div className="flex h-screen bg-[#FCFBF8] font-sans">
 
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        handleLogout={handleLogout} 
+      />
 
       <div className="flex-1 flex flex-col overflow-hidden">
 
