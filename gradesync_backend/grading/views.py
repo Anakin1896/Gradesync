@@ -79,7 +79,7 @@ class QuickEnrollView(APIView):
         program_code = data.get('program')
         program_instance = Program.objects.filter(code=program_code).first()
 
-        subject_code = data.get('subject', 'CC 102') # Defaults to CC 102 if missing
+        subject_code = data.get('subject', 'CC 102')
         subject_instance, _ = Subject.objects.get_or_create(
             code=subject_code,
             defaults={'title': subject_code, 'units': 3}
@@ -227,18 +227,17 @@ class ActivityScoringView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, assessment_id):
-
         assessment = Assessment.objects.filter(assessment_id=assessment_id).first()
         if not assessment:
             return Response({'error': 'Activity not found'}, status=404)
-
+        
         class_field = assessment.component.class_field
-
         enrollments = Enrollment.objects.filter(class_field=class_field).select_related('student')
+        
+        scores = StudentScore.objects.filter(assessment=assessment).select_related('enrollment__student')
 
-        scores = StudentScore.objects.filter(assessment=assessment)
-        score_map = {s.student.student_number: s.score for s in scores}
-
+        score_map = {s.enrollment.student.student_number: s.score for s in scores}
+        
         data = []
         for e in enrollments:
             data.append({
@@ -247,7 +246,7 @@ class ActivityScoringView(APIView):
                 "last_name": e.student.last_name,
                 "raw_score": score_map.get(e.student.student_number, '') 
             })
-
+        
         data.sort(key=lambda x: x['last_name'])
         return Response(data)
 
@@ -255,18 +254,23 @@ class ActivityScoringView(APIView):
         assessment = Assessment.objects.filter(assessment_id=assessment_id).first()
         student_number = request.data.get('student_number')
         raw_score = request.data.get('raw_score')
-        
-        student = Student.objects.filter(student_number=student_number).first()
-        if not student or not assessment:
+
+        enrollment = Enrollment.objects.filter(
+            class_field=assessment.component.class_field, 
+            student__student_number=student_number
+        ).first()
+
+        if not enrollment or not assessment:
             return Response({'error': 'Invalid data'}, status=400)
             
         if raw_score == '' or raw_score is None:
-            StudentScore.objects.filter(assessment=assessment, student=student).delete()
+
+            StudentScore.objects.filter(assessment=assessment, enrollment=enrollment).delete()
         else:
 
             StudentScore.objects.update_or_create(
                 assessment=assessment,
-                student=student,
+                enrollment=enrollment, 
                 defaults={'score': raw_score}
             )
             
