@@ -28,42 +28,79 @@ const Login = () => {
     setErrorMsg('');
 
     try {
+
       const response = await fetch('http://127.0.0.1:8000/api/token/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-
-        body: JSON.stringify({
-          username: employeeId, 
-          password: password
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: employeeId, password: password })
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        
+
         localStorage.setItem('auth_token', data.access);
         localStorage.setItem('refresh_token', data.refresh);
 
-        window.location.reload(); 
-      } else {
+        const profileResponse = await fetch('http://127.0.0.1:8000/api/accounts/profile/', {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${data.access}` }
+        });
+        
+        const profileData = await profileResponse.json();
 
+        if (profileData.is_first_login) {
+          setIsFirstLogin(true); // Pop the modal!
+          setIsLoading(false);
+        } else {
+          window.location.reload(); // Normal login, let them in!
+        }
+
+      } else {
         setErrorMsg(data.detail || 'Invalid credentials. Please try again.');
+        setIsLoading(false);
       }
     } catch (err) {
       console.error("Login Error:", err);
       setErrorMsg('Network error. Is your Django server running?');
-    } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePasswordResetSubmit = (e) => {
+  const handlePasswordResetSubmit = async (e) => {
     e.preventDefault();
-    alert("Password successfully updated! Logging you in...");
-    setIsFirstLogin(false);
+
+    if (newPassword !== confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+    if (!Object.values(strength).every(Boolean)) {
+      alert("Please meet all password requirements.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('auth_token');
+
+      const response = await fetch('http://127.0.0.1:8000/api/accounts/change-password/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ new_password: newPassword })
+      });
+
+      if (response.ok) {
+        setIsFirstLogin(false);
+        window.location.reload();
+      } else {
+        alert("Failed to update password. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error saving password:", error);
+      alert("Network error occurred while saving password.");
+    }
   };
 
   return (
