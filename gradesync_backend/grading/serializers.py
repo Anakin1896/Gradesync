@@ -18,6 +18,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Enrollment
         fields = '__all__'
+        depth = 2
 
 class AttendanceSerializer(serializers.ModelSerializer):
     class Meta:
