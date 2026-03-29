@@ -167,12 +167,11 @@ class ClassActivitiesView(APIView):
         except ClassSchedule.DoesNotExist:
             return Response({'error': 'Class not found'}, status=404)
 
-        # Get all assessments for this specific class
         assessments = Assessment.objects.filter(component__class_field=schedule).select_related('period')
 
         data = []
         for a in assessments:
-            # Aggregate the student scores for this assessment
+
             stats = StudentScore.objects.filter(assessment=a).aggregate(
                 avg_score=Avg('score'),
                 max_score=Max('score'),
@@ -191,13 +190,12 @@ class ClassActivitiesView(APIView):
                 "highest": round(stats['max_score'] or 0, 1),
                 "lowest": round(stats['min_score'] or 0, 1)
             })
-        
-        # Sort by period order so Pre-Midterm comes before Midterm
+
         data.sort(key=lambda x: (x['period_order'], x['id']))
         return Response(data)
 
     def post(self, request, class_id):
-        # Quick-Create an Activity
+
         user = request.user
         data = request.data
         schedule = ClassSchedule.objects.filter(class_id=class_id, teacher=user).first()
@@ -224,3 +222,52 @@ class ClassActivitiesView(APIView):
             date_given=data.get('date')
         )
         return Response({'message': 'Activity created successfully!'}, status=201)
+    
+class ActivityScoringView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, assessment_id):
+
+        assessment = Assessment.objects.filter(assessment_id=assessment_id).first()
+        if not assessment:
+            return Response({'error': 'Activity not found'}, status=404)
+
+        class_field = assessment.component.class_field
+
+        enrollments = Enrollment.objects.filter(class_field=class_field).select_related('student')
+
+        scores = StudentScore.objects.filter(assessment=assessment)
+        score_map = {s.student.student_number: s.score for s in scores}
+
+        data = []
+        for e in enrollments:
+            data.append({
+                "student_number": e.student.student_number,
+                "first_name": e.student.first_name,
+                "last_name": e.student.last_name,
+                "raw_score": score_map.get(e.student.student_number, '') 
+            })
+
+        data.sort(key=lambda x: x['last_name'])
+        return Response(data)
+
+    def post(self, request, assessment_id):
+        assessment = Assessment.objects.filter(assessment_id=assessment_id).first()
+        student_number = request.data.get('student_number')
+        raw_score = request.data.get('raw_score')
+        
+        student = Student.objects.filter(student_number=student_number).first()
+        if not student or not assessment:
+            return Response({'error': 'Invalid data'}, status=400)
+            
+        if raw_score == '' or raw_score is None:
+            StudentScore.objects.filter(assessment=assessment, student=student).delete()
+        else:
+
+            StudentScore.objects.update_or_create(
+                assessment=assessment,
+                student=student,
+                defaults={'score': raw_score}
+            )
+            
+        return Response({'message': 'Score saved'})

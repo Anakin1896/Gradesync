@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Loader2, X, Save } from 'lucide-react';
+import { BookOpen, Plus, Loader2, X, Save, ChevronLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const Activities = () => {
   const [classes, setClasses] = useState([]);
@@ -14,6 +14,10 @@ const Activities = () => {
   const [formData, setFormData] = useState({
     title: '', type: 'Quiz', period: 'Pre-Midterm', perfect_score: 100, date: ''
   });
+
+  const [gradingActivity, setGradingActivity] = useState(null);
+  const [rosterScores, setRosterScores] = useState([]);
+  const [isLoadingRoster, setIsLoadingRoster] = useState(false);
 
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
@@ -52,8 +56,10 @@ const Activities = () => {
   };
 
   useEffect(() => {
-    fetchActivities();
-  }, [selectedClassId]);
+    if (!gradingActivity) {
+      fetchActivities(); 
+    }
+  }, [selectedClassId, gradingActivity]);
 
   const handleAddActivity = async (e) => {
     e.preventDefault();
@@ -69,6 +75,167 @@ const Activities = () => {
       }
     } catch (err) { console.error(err); } finally { setIsSaving(false); }
   };
+
+  const calculateWeightedScore = (rawScore, perfectScore) => {
+    if (rawScore === '' || rawScore === null || isNaN(rawScore)) return '--';
+    const numRaw = parseFloat(rawScore);
+    const numPerf = parseFloat(perfectScore);
+    
+    if (numPerf <= 0) return '--';
+
+    let weighted = (numRaw / numPerf) * 40 + 60;
+
+    weighted = Math.max(60, Math.min(100, weighted));
+    
+    return weighted.toFixed(2) + '%';
+  };
+
+  const openGradingPanel = (activity) => {
+    setGradingActivity(activity);
+    setIsLoadingRoster(true);
+    
+    fetch(`http://127.0.0.1:8000/api/grading/activity-scores/${activity.id}/`, { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        const rosterWithStatus = data.map(s => ({ ...s, saveStatus: 'idle' }));
+        setRosterScores(rosterWithStatus);
+        setIsLoadingRoster(false);
+      })
+      .catch(err => { console.error(err); setIsLoadingRoster(false); });
+  };
+
+  const handleScoreChange = (studentNumber, newValue) => {
+
+    setRosterScores(prev => prev.map(s => 
+      s.student_number === studentNumber ? { ...s, raw_score: newValue, saveStatus: 'saving' } : s
+    ));
+
+    fetch(`http://127.0.0.1:8000/api/grading/activity-scores/${gradingActivity.id}/`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ student_number: studentNumber, raw_score: newValue })
+    })
+    .then(res => {
+      if (res.ok) {
+
+        setRosterScores(prev => prev.map(s => 
+          s.student_number === studentNumber ? { ...s, saveStatus: 'saved' } : s
+        ));
+
+        setTimeout(() => {
+          setRosterScores(current => current.map(s => 
+            s.student_number === studentNumber ? { ...s, saveStatus: 'idle' } : s
+          ));
+        }, 2000);
+      } else {
+        throw new Error("Failed");
+      }
+    })
+    .catch(() => {
+      setRosterScores(prev => prev.map(s => 
+        s.student_number === studentNumber ? { ...s, saveStatus: 'error' } : s
+      ));
+    });
+  };
+
+  if (gradingActivity) {
+    return (
+      <div className="max-w-6xl animate-in fade-in slide-in-from-bottom-8 duration-300 relative pb-10">
+
+        <button 
+          onClick={() => setGradingActivity(null)}
+          className="flex items-center space-x-2 text-gray-500 hover:text-amber-600 font-bold mb-6 transition-colors"
+        >
+          <ChevronLeft size={20} />
+          <span>Back to Activities</span>
+        </button>
+
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-8 flex justify-between items-center">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 uppercase tracking-wider">
+                {gradingActivity.type}
+              </span>
+              <span className="text-sm font-bold text-gray-400">{gradingActivity.period}</span>
+            </div>
+            <h1 className="text-2xl font-serif font-bold text-[#1A1C29]">{gradingActivity.title}</h1>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-bold text-gray-400 tracking-wider mb-1">PERFECT SCORE</p>
+            <p className="text-3xl font-bold text-amber-500">{gradingActivity.perfect_score}</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 border-b border-gray-100">
+                <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider w-1/3">STUDENT NAME</th>
+                <th className="p-4 text-[11px] font-bold text-amber-600 tracking-wider text-right bg-amber-50/50">RAW SCORE</th>
+                <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider text-center">WEIGHTED SCORE (Base-60)</th>
+                <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider w-24 text-center">STATUS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {isLoadingRoster ? (
+                <tr><td colSpan="4" className="p-12 text-center text-gray-400"><Loader2 className="animate-spin mx-auto mb-2" size={32} /></td></tr>
+              ) : rosterScores.length === 0 ? (
+                <tr><td colSpan="4" className="p-12 text-center text-gray-500 font-medium">No students enrolled in this class yet.</td></tr>
+              ) : (
+                rosterScores.map(student => {
+                  const weighted = calculateWeightedScore(student.raw_score, gradingActivity.perfect_score);
+                  
+                  return (
+                    <tr key={student.student_number} className="hover:bg-gray-50/50 transition-colors group">
+                      <td className="p-4">
+                        <div className="font-bold text-[#1A1C29]">{student.last_name}, {student.first_name}</div>
+                        <div className="text-xs text-gray-400 font-medium">{student.student_number}</div>
+                      </td>
+
+                      <td className="p-4 bg-amber-50/30 group-hover:bg-amber-50/60 transition-colors">
+                        <div className="flex justify-end">
+                          <input 
+                            type="number" 
+                            step="0.1"
+                            min="0"
+                            max={gradingActivity.perfect_score}
+                            value={student.raw_score}
+                            onChange={(e) => {
+                              setRosterScores(prev => prev.map(s => 
+                                s.student_number === student.student_number ? { ...s, raw_score: e.target.value } : s
+                              ));
+                            }}
+                            onBlur={(e) => handleScoreChange(student.student_number, e.target.value)}
+                            className="w-24 px-3 py-2 text-right bg-white border border-gray-200 rounded-lg font-bold text-[#1A1C29] focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 shadow-sm"
+                            placeholder="--"
+                          />
+                        </div>
+                      </td>
+
+                      <td className="p-4 text-center">
+                        <span className={`text-lg font-bold ${weighted === '--' ? 'text-gray-300' : 'text-[#1A1C29]'}`}>
+                          {weighted}
+                        </span>
+                      </td>
+
+                      <td className="p-4 text-center">
+                        <div className="flex justify-center items-center h-full">
+                          {student.saveStatus === 'saving' && <Loader2 size={18} className="animate-spin text-amber-500" />}
+                          {student.saveStatus === 'saved' && <CheckCircle2 size={18} className="text-emerald-500 animate-in zoom-in" />}
+                          {student.saveStatus === 'error' && <AlertCircle size={18} className="text-red-500" title="Failed to save" />}
+                          {student.saveStatus === 'idle' && <span className="w-4.5"></span>}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   const filteredActivities = activities.filter(a => {
     if (activeTab === 'All') return true;
@@ -109,13 +276,7 @@ const Activities = () => {
 
       <div className="flex space-x-2 mb-8">
         {['All', 'Quizzes', 'Activities', 'Exams'].map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-5 py-2 rounded-full text-sm font-bold transition-colors ${
-              activeTab === tab ? 'bg-amber-400 text-[#1A1C29] shadow-sm' : 'text-gray-500 hover:bg-gray-100 bg-white border border-gray-200'
-            }`}
-          >
+          <button key={tab} onClick={() => setActiveTab(tab)} className={`px-5 py-2 rounded-full text-sm font-bold transition-colors ${activeTab === tab ? 'bg-amber-400 text-[#1A1C29] shadow-sm' : 'text-gray-500 hover:bg-gray-100 bg-white border border-gray-200'}`}>
             {tab}
           </button>
         ))}
@@ -151,11 +312,14 @@ const Activities = () => {
                     if (item.type === 'Quiz') badgeColor = "bg-blue-50 text-blue-600 font-bold";
                     if (item.type === 'Activity') badgeColor = "bg-emerald-50 text-emerald-600 font-bold";
                     if (item.type === 'Exam') badgeColor = "bg-purple-50 text-purple-600 font-bold";
-                    if (item.type === 'Project') badgeColor = "bg-orange-50 text-orange-600 font-bold";
+                    if (item.type === 'Project') badgeColor = "bg-orange-50 text-orange-600 font-bold"; 
 
                     return (
-                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors cursor-pointer group">
-                        <td className="p-4 font-bold text-[#1A1C29] text-sm group-hover:text-amber-600 transition-colors">{item.title}</td>
+                      
+                      <tr key={item.id} onClick={() => openGradingPanel(item)} className="hover:bg-amber-50/30 transition-colors cursor-pointer group">
+                        <td className="p-4 font-bold text-[#1A1C29] text-sm group-hover:text-amber-600 transition-colors flex items-center gap-2">
+                          {item.title}
+                        </td>
                         <td className="p-4">
                           <span className={`px-3 py-1 rounded-full text-[11px] ${badgeColor}`}>{item.type}</span>
                         </td>

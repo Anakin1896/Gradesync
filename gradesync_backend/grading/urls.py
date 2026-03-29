@@ -17,6 +17,7 @@ urlpatterns = [
     path('available-students/', views.AvailableStudentsView.as_view(), name='available-students'),
     path('available-subjects/', views.AvailableSubjectsView.as_view(), name='available-subjects'),
     path('class-activities/<int:class_id>/', views.ClassActivitiesView.as_view(), name='class-activities'),
+    path('activity-scores/<int:assessment_id>/', views.ActivityScoringView.as_view(), name='activity-scores'),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
     path('', include(router.urls)),
 ]
