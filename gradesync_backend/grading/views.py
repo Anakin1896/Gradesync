@@ -1,3 +1,5 @@
+from core.models import Program
+from students.models import Student, Section
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -73,20 +75,62 @@ class QuickEnrollView(APIView):
         data = request.data
         user = request.user
 
-        schedule = ClassSchedule.objects.filter(teacher=user, is_active=True).first()
-        
-        if not schedule:
-            return Response({'error': 'No active classes found for this teacher.'}, status=status.HTTP_400_BAD_REQUEST)
+        program_code = data.get('program')
+        program_instance = Program.objects.filter(code=program_code).first()
 
-        student, created = Student.objects.get_or_create(
+        student, _ = Student.objects.get_or_create(
             student_number=data.get('student_number'),
             defaults={
                 'first_name': data.get('first_name'),
                 'last_name': data.get('last_name'),
                 'sex': data.get('sex', 'M'),
+                'email': data.get('email', ''),
+                'current_year_level': data.get('current_year_level', 1),
+                'program': program_instance
             }
         )
+
+        section_name = data.get('section', 'Block A')
+        section_instance, _ = Section.objects.get_or_create(
+            name=section_name, 
+            defaults={'program': program_instance, 'year_level': data.get('current_year_level', 1)}
+        )
+
+        schedule = ClassSchedule.objects.filter(teacher=user, section=section_instance, is_active=True).first()
+
+        if not schedule:
+            base_schedule = ClassSchedule.objects.filter(teacher=user, is_active=True).first()
+            if base_schedule:
+                schedule = ClassSchedule.objects.create(
+                    teacher=user,
+                    section=section_instance,
+                    term=base_schedule.term,
+                    subject=base_schedule.subject,
+                    room='TBA',
+                    is_active=True
+                )
+            else:
+                 return Response({'error': 'Please set up at least one Class Schedule in the Admin panel first.'}, status=status.HTTP_400_BAD_REQUEST)
 
         Enrollment.objects.get_or_create(class_field=schedule, student=student)
 
         return Response({'message': 'Student enrolled successfully!'}, status=status.HTTP_201_CREATED)
+
+class AvailableStudentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        students = Student.objects.all().select_related('program').order_by('last_name', 'first_name')
+        
+        data = []
+        for s in students:
+            data.append({
+                "student_number": s.student_number,
+                "first_name": s.first_name,
+                "last_name": s.last_name,
+                "program": s.program.code if s.program else "N/A",
+                "current_year_level": str(s.current_year_level)
+            })
+            
+        return Response(data)
