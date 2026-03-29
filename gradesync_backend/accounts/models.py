@@ -9,8 +9,8 @@ class User(AbstractUser):
     middle_initial = models.CharField(max_length=5, null=True, blank=True) 
     position_title = models.CharField(max_length=100, null=True, blank=True)
     school_name = models.CharField(max_length=200, default="Mabini Colleges.Inc")
-
     department = models.ForeignKey('core.Department', on_delete=models.SET_NULL, null=True, blank=True)
+    is_first_login = models.BooleanField(default=True)
 
     def __str__(self):
         prefix = f"{self.title_prefix} " if self.title_prefix else ""
