@@ -1,10 +1,11 @@
-from core.models import Program, Subject, AcademicTerm
+from core.models import Program, Subject, AcademicTerm, Period
+from students.models import Student
 from students.models import Student, Section
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from students.models import Student
+from django.db.models import Avg, Max, Min
 from .models import ClassSchedule, TeacherSchedule, Enrollment, Attendance, GradingComponent, Assessment, StudentScore
 from .serializers import (
     ClassScheduleSerializer, TeacherScheduleSerializer, EnrollmentSerializer, 
@@ -139,3 +140,87 @@ class AvailableStudentsView(APIView):
             })
             
         return Response(data)
+    
+class AvailableSubjectsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        
+        subjects = Subject.objects.all().order_by('code')
+        
+        data = []
+        for s in subjects:
+            data.append({
+                "code": s.code,
+                "title": s.title
+            })
+            
+        return Response(data)
+
+class ClassActivitiesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, class_id):
+        user = request.user
+        try:
+            schedule = ClassSchedule.objects.get(class_id=class_id, teacher=user)
+        except ClassSchedule.DoesNotExist:
+            return Response({'error': 'Class not found'}, status=404)
+
+        # Get all assessments for this specific class
+        assessments = Assessment.objects.filter(component__class_field=schedule).select_related('period')
+
+        data = []
+        for a in assessments:
+            # Aggregate the student scores for this assessment
+            stats = StudentScore.objects.filter(assessment=a).aggregate(
+                avg_score=Avg('score'),
+                max_score=Max('score'),
+                min_score=Min('score')
+            )
+            
+            data.append({
+                "id": a.assessment_id,
+                "title": a.title,
+                "type": a.assessment_type,
+                "date": a.date_given.strftime('%b %d, %Y') if a.date_given else 'TBA',
+                "perfect_score": float(a.total_points),
+                "period": a.period.name if a.period else 'Unassigned',
+                "period_order": a.period.sequence_order if a.period else 99,
+                "class_avg": round(stats['avg_score'] or 0, 1),
+                "highest": round(stats['max_score'] or 0, 1),
+                "lowest": round(stats['min_score'] or 0, 1)
+            })
+        
+        # Sort by period order so Pre-Midterm comes before Midterm
+        data.sort(key=lambda x: (x['period_order'], x['id']))
+        return Response(data)
+
+    def post(self, request, class_id):
+        # Quick-Create an Activity
+        user = request.user
+        data = request.data
+        schedule = ClassSchedule.objects.filter(class_id=class_id, teacher=user).first()
+        
+        if not schedule:
+             return Response({'error': 'Class not found'}, status=404)
+
+        period_name = data.get('period', 'Pre-Midterm')
+        period, _ = Period.objects.get_or_create(name=period_name, defaults={'sequence_order': 1})
+
+        a_type = data.get('type', 'Activity')
+        component, _ = GradingComponent.objects.get_or_create(
+            class_field=schedule,
+            name=f"{a_type}s",
+            defaults={'weight_percentage': 25.00}
+        )
+
+        Assessment.objects.create(
+            component=component,
+            period=period,
+            title=data.get('title'),
+            assessment_type=a_type,
+            total_points=data.get('perfect_score', 100),
+            date_given=data.get('date')
+        )
+        return Response({'message': 'Activity created successfully!'}, status=201)

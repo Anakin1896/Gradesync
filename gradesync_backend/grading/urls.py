@@ -15,6 +15,8 @@ urlpatterns = [
 
     path('quick-enroll/', views.QuickEnrollView.as_view(), name='quick-enroll'),
     path('available-students/', views.AvailableStudentsView.as_view(), name='available-students'),
+    path('available-subjects/', views.AvailableSubjectsView.as_view(), name='available-subjects'),
+    path('class-activities/<int:class_id>/', views.ClassActivitiesView.as_view(), name='class-activities'),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
     path('', include(router.urls)),
 ]
