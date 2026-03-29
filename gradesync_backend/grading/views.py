@@ -1,4 +1,4 @@
-from core.models import Program
+from core.models import Program, Subject, AcademicTerm
 from students.models import Student, Section
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
@@ -78,6 +78,12 @@ class QuickEnrollView(APIView):
         program_code = data.get('program')
         program_instance = Program.objects.filter(code=program_code).first()
 
+        subject_code = data.get('subject', 'CC 102') # Defaults to CC 102 if missing
+        subject_instance, _ = Subject.objects.get_or_create(
+            code=subject_code,
+            defaults={'title': subject_code, 'units': 3}
+        )
+
         student, _ = Student.objects.get_or_create(
             student_number=data.get('student_number'),
             defaults={
@@ -96,21 +102,20 @@ class QuickEnrollView(APIView):
             defaults={'program': program_instance, 'year_level': data.get('current_year_level', 1)}
         )
 
-        schedule = ClassSchedule.objects.filter(teacher=user, section=section_instance, is_active=True).first()
+        term = AcademicTerm.objects.filter(is_active=True).first()
+        if not term:
+            term = AcademicTerm.objects.first()
 
-        if not schedule:
-            base_schedule = ClassSchedule.objects.filter(teacher=user, is_active=True).first()
-            if base_schedule:
-                schedule = ClassSchedule.objects.create(
-                    teacher=user,
-                    section=section_instance,
-                    term=base_schedule.term,
-                    subject=base_schedule.subject,
-                    room='TBA',
-                    is_active=True
-                )
-            else:
-                 return Response({'error': 'Please set up at least one Class Schedule in the Admin panel first.'}, status=status.HTTP_400_BAD_REQUEST)
+        schedule, _ = ClassSchedule.objects.get_or_create(
+            teacher=user,
+            subject=subject_instance,
+            section=section_instance,
+            defaults={
+                'term': term,
+                'is_active': True,
+                'room': 'TBA'
+            }
+        )
 
         Enrollment.objects.get_or_create(class_field=schedule, student=student)
 
