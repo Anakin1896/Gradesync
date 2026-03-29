@@ -19,6 +19,8 @@ const Dashboard = () => {
     pendingGrades: 0
   });
 
+  const [userName, setUserName] = useState('');
+
   const calendarData = useMemo(() => {
     const today = new Date();
     const currentMonthYear = today.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -43,8 +45,46 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
 
-    setIsLoading(false); 
+    fetch('http://127.0.0.1:8000/api/grading/dashboard/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.kpiStats) setKpiStats(data.kpiStats);
+        if (data.todayClasses) setTodayClasses(data.todayClasses);
+        if (data.subjectsData) setSubjectsData(data.subjectsData);
+        if (data.scheduleRows) setScheduleRows(data.scheduleRows);
+        if (data.gradeCompletion) setGradeCompletion(data.gradeCompletion);
+        
+        setIsLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch dashboard data:", err);
+        setIsLoading(false);
+      });
+
+    fetch('http://127.0.0.1:8000/api/accounts/profile/', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const prefix = data.title_prefix ? `${data.title_prefix} ` : '';
+        const lastName = data.last_name || '';
+        setUserName(`${prefix}${lastName}`);
+      })
+      .catch(err => console.error("Failed to fetch name:", err));
+      
   }, []);
 
   const renderOverview = () => (
@@ -259,7 +299,7 @@ const Dashboard = () => {
     <div className="max-w-6xl">
       <div className="mb-6">
         <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back, Ms. Santos — {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        <p className="text-gray-500 mt-1">Welcome back, {userName || 'Loading...'} — {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
       </div>
 
       <div className="flex border-b border-gray-200 mb-8 gap-8">
