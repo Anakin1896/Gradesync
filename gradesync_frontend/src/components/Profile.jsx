@@ -63,10 +63,6 @@ const Profile = () => {
 
   return (
     <div className="max-w-4xl animate-in fade-in duration-300">
-      <div className="mb-8">
-        <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">My Profile</h1>
-        <p className="text-gray-500 mt-1">Your account information</p>
-      </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-8">
         
