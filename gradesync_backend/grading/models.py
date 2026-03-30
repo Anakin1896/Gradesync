@@ -36,6 +36,11 @@ class Enrollment(models.Model):
     remarks = models.CharField(max_length=20, null=True, blank=True)
     enrolled_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
+    pre_midterm_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    midterm_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    pre_final_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    final_period_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
     def calculate_final_grade(self):
 
         period_grades = self.period_grades.all()

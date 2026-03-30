@@ -19,25 +19,20 @@ const Attendance = () => {
   });
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/api/grading/enrollments/', { headers: getAuthHeaders() })
+    fetch('http://127.0.0.1:8000/api/grading/dashboard/', { headers: getAuthHeaders() })
       .then(res => res.json())
       .then(data => {
-        const uniqueClasses = [];
-        const classMap = new Map();
-        data.forEach(e => {
-          if (e.class_field && !classMap.has(e.class_field.class_id)) {
-            classMap.set(e.class_field.class_id, true);
-            const sub = e.class_field.subject?.code || 'Subject';
-            let sec = e.class_field.section?.name || 'Block';
-            const prog = e.student?.program?.code || '';
-            if (prog && !sec.includes(prog)) sec = `${prog} ${sec}`;
-            uniqueClasses.push({ id: e.class_field.class_id.toString(), name: `${sub} — ${sec}` });
-          }
-        });
-        setClasses(uniqueClasses);
-        if (uniqueClasses.length > 0) setSelectedClassId(uniqueClasses[0].id);
+        if (data.classes) {
+          const teacherClasses = data.classes.map(cls => ({
+            id: cls.id.toString(),
+            name: `${cls.subject} — ${cls.section}`
+          }));
+          
+          setClasses(teacherClasses);
+          if (teacherClasses.length > 0) setSelectedClassId(teacherClasses[0].id);
+        }
       })
-      .catch(err => console.error(err));
+      .catch(err => console.error("Failed to load classes:", err));
   }, []);
 
   const fetchSummary = () => {

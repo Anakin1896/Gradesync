@@ -142,7 +142,7 @@ const Dashboard = () => {
   
   const scheduledClasses = classes.filter(c => c.time && c.time !== 'TBA' && c.days && c.days !== 'TBA');
   const unscheduledClasses = classes.filter(c => !c.time || c.time === 'TBA' || !c.days || c.days === 'TBA');
-
+  
   const parseTimeForSort = (timeStr) => {
     if (!timeStr || timeStr === 'TBA') return 999999;
     const firstTime = timeStr.split('-')[0].trim();
@@ -166,6 +166,16 @@ const Dashboard = () => {
     sub.code.toLowerCase().includes(formData.subject.toLowerCase()) || 
     sub.title.toLowerCase().includes(formData.subject.toLowerCase())
   );
+
+  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const todaysClasses = scheduledClasses
+    .filter(cls => cls.days.includes(todayName))
+    .sort((a, b) => parseTimeForSort(a.time) - parseTimeForSort(b.time));
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const nextClass = todaysClasses.find(cls => parseTimeForSort(cls.time) > currentMinutes);
+  const nextClassText = nextClass ? nextClass.time.split('-')[0].trim() : '--:--';
 
   return (
     <div className="max-w-6xl animate-in fade-in duration-300 relative pb-10">
@@ -191,25 +201,27 @@ const Dashboard = () => {
         <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
           <div className="grid grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm border-t-4 border-t-amber-400 relative">
-              <Layers className="text-blue-400 mb-4" size={24} />
+              <Layers className="text-amber-400 mb-4" size={24} />
               <h2 className="text-3xl font-bold text-[#1A1C29] mb-1">{stats.total_classes}</h2>
               <p className="text-sm font-bold text-[#1A1C29]">Subjects Handled</p>
-              <p className="text-xs text-gray-400 mt-1">0 active today</p>
+              <p className="text-xs text-gray-400 mt-1">{todaysClasses.length} active today</p>
             </div>
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm border-t-4 border-t-emerald-400 relative">
-              <Users className="text-indigo-500 mb-4" size={24} />
+              <Users className="text-emerald-500 mb-4" size={24} />
               <h2 className="text-3xl font-bold text-[#1A1C29] mb-1">{stats.total_students}</h2>
               <p className="text-sm font-bold text-[#1A1C29]">Total Students</p>
               <p className="text-xs text-gray-400 mt-1">Across all sections</p>
             </div>
+
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm border-t-4 border-t-blue-400 relative">
-              <CalendarIcon className="text-blue-300 mb-4" size={24} />
-              <h2 className="text-3xl font-bold text-[#1A1C29] mb-1">0</h2>
+              <CalendarIcon className="text-blue-400 mb-4" size={24} />
+              <h2 className="text-3xl font-bold text-[#1A1C29] mb-1">{todaysClasses.length}</h2>
               <p className="text-sm font-bold text-[#1A1C29]">Classes Today</p>
-              <p className="text-xs text-gray-400 mt-1">Next: --:--</p>
+              <p className="text-xs text-gray-400 mt-1">Next: {nextClassText}</p>
             </div>
+
             <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm border-t-4 border-t-purple-400 relative">
-              <AlertTriangle className="text-amber-400 mb-4" size={24} />
+              <AlertTriangle className="text-purple-400 mb-4" size={24} />
               <h2 className="text-3xl font-bold text-[#1A1C29] mb-1">0</h2>
               <p className="text-sm font-bold text-[#1A1C29]">Pending Grades</p>
               <p className="text-xs text-gray-400 mt-1">Due this week</p>
@@ -217,15 +229,34 @@ const Dashboard = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-6">
-            <div className="col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col">
+            <div className="col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col h-87.5">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-serif font-bold text-[#1A1C29]">Today's Classes</h3>
-                <button className="text-amber-500 text-sm font-bold flex items-center gap-1 hover:text-amber-600 transition-colors">
-                  View all <ArrowRight size={16} />
+                <button onClick={() => setActiveTab('Schedule')} className="text-amber-500 text-sm font-bold flex items-center gap-1 hover:text-amber-600 transition-colors">
+                  View Schedule <ArrowRight size={16} />
                 </button>
               </div>
-              <div className="flex-1 flex items-center justify-center text-gray-400 italic font-medium text-sm">
-                No classes scheduled for today.
+              
+              <div className="flex-1 flex flex-col gap-3 overflow-y-auto pr-2">
+                {todaysClasses.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center text-gray-400 italic font-medium text-sm">
+                    No classes scheduled for today.
+                  </div>
+                ) : (
+                  todaysClasses.map(cls => (
+                    <div key={cls.id} className="flex items-center p-4 rounded-xl border border-gray-100 hover:shadow-sm hover:border-gray-200 transition-all bg-gray-50/30">
+                      <div className="w-24 shrink-0 text-sm font-bold text-gray-600">{cls.time.split('-')[0].trim()}</div>
+                      <div className={`w-1 h-10 rounded-full mx-4 ${getSubjectColor(cls.subject).split(' ')[0]}`}></div>
+                      <div className="flex-1">
+                        <p className="text-base font-bold text-[#1A1C29]">{cls.subject} — {cls.title}</p>
+                        <p className="text-xs font-semibold text-gray-500 mt-0.5">{cls.section}</p>
+                      </div>
+                      <div className="text-xs font-bold text-gray-600 bg-white border border-gray-200 px-3 py-1.5 rounded-lg shadow-sm">
+                        {cls.room}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
             <div className="col-span-1">{renderCalendar()}</div>
