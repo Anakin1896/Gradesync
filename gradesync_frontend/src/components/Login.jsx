@@ -50,10 +50,10 @@ const Login = () => {
         const profileData = await profileResponse.json();
 
         if (profileData.is_first_login) {
-          setIsFirstLogin(true); // Pop the modal!
+          setIsFirstLogin(true);
           setIsLoading(false);
         } else {
-          window.location.reload(); // Normal login, let them in!
+          window.location.reload();
         }
 
       } else {
@@ -131,7 +131,7 @@ const Login = () => {
           </p>
 
           <div className="flex flex-wrap gap-4">
-            {['Grade Tracking', '4-Period Exams', 'Attendance', 'Class Schedules', 'Student Records'].map(feature => (
+            {['Grade Tracking', 'Attendance', 'Class Schedules', 'Student Records'].map(feature => (
               <div key={feature} className="flex items-center gap-2 px-5 py-2 rounded-full border border-gray-700/50 bg-gray-800/30 backdrop-blur-sm text-gray-300 text-sm font-medium">
                 <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                 {feature}
@@ -176,7 +176,7 @@ const Login = () => {
                   type="text" 
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
-                  placeholder="e.g. 2021-0042 or admin"
+                  placeholder="e.g. 2026-0001"
                   className="w-full bg-[#1A2234] border border-gray-700/50 text-white text-sm rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-colors placeholder-gray-600"
                   required
                 />
