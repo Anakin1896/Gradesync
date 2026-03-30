@@ -21,5 +21,6 @@ urlpatterns = [
     path('class-attendance/<int:class_id>/', views.ClassAttendanceView.as_view(), name='class-attendance'),
     path('class-attendance-summary/<int:class_id>/', views.ClassAttendanceSummaryView.as_view(), name='class-attendance-summary'),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
+    path('schedule/<int:schedule_id>/', views.ScheduleManageView.as_view(), name='manage-schedule'),
     path('', include(router.urls)),
 ]

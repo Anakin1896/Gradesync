@@ -1,4 +1,6 @@
 from core.models import Program, Subject, AcademicTerm, Period
+import re
+from datetime import date, datetime
 from students.models import Student
 from students.models import Student, Section
 from rest_framework import viewsets, status
@@ -52,13 +54,24 @@ class DashboardView(APIView):
 
         class_list = []
         for s in schedules:
+            start = getattr(s, 'start_time', None)
+            end = getattr(s, 'end_time', None)
+            
+            time_str = "TBA"
+            if start:
+                start_str = start.strftime('%I:%M %p').lstrip('0') if hasattr(start, 'strftime') else str(start)[:5]
+                time_str = start_str
+                if end:
+                    end_str = end.strftime('%I:%M %p').lstrip('0') if hasattr(end, 'strftime') else str(end)[:5]
+                    time_str = f"{start_str} - {end_str}"
+
             class_list.append({
                 "id": s.class_id,
                 "subject": s.subject.code if s.subject else "TBA",
                 "title": s.subject.title if s.subject else "TBA",
                 "section": s.section.name if s.section else "TBA",
                 "days": getattr(s, 'days', 'TBA'), 
-                "time": getattr(s, 'start_time', 'TBA') if getattr(s, 'start_time', None) else "TBA",
+                "time": time_str,
                 "room": getattr(s, 'room', 'TBA')
             })
 
@@ -75,34 +88,48 @@ class DashboardView(APIView):
         })
 
     def post(self, request):
-        # Handles the "+ Add Class" button!
         data = request.data
         user = request.user
-
-        subject_code = data.get('subject', 'NEW 101')
+        
         subject_instance, _ = Subject.objects.get_or_create(
-            code=subject_code,
-            defaults={'title': data.get('title', subject_code)}
+            code=data.get('subject', 'NEW 101'),
+            defaults={'title': data.get('title', 'New Subject')}
         )
-
-        section_name = data.get('section', 'Block A')
-        section_instance, _ = Section.objects.get_or_create(name=section_name)
-
+        
+        section_instance, _ = Section.objects.get_or_create(name=data.get('section', 'Block A'))
+        term_instance = AcademicTerm.objects.first()
+        
         schedule = ClassSchedule(
-            teacher=user,
-            subject=subject_instance,
-            section=section_instance,
+            teacher=user, subject=subject_instance, section=section_instance, term=term_instance
         )
-
+        
         if hasattr(schedule, 'room'):
             schedule.room = data.get('room', 'TBA')
         if hasattr(schedule, 'days'):
-            # Convert array of days to a comma-separated string
             days_list = data.get('days', [])
             schedule.days = ', '.join(days_list) if days_list else 'TBA'
-        if hasattr(schedule, 'start_time'):
-            schedule.start_time = data.get('time', 'TBA')
+
+        time_input = data.get('time', '')
+        if time_input:
+            times = re.findall(r'\d{1,2}:\d{2}(?:\s?[aApP][mM])?', time_input)
             
+            def parse_to_24hr(t_str):
+
+                t_str = t_str.strip().upper().replace('AM', ' AM').replace('PM', ' PM').replace('  ', ' ')
+                try:
+                    if 'AM' in t_str or 'PM' in t_str:
+                        return datetime.strptime(t_str, '%I:%M %p').time()
+                    return datetime.strptime(t_str, '%H:%M').time()
+                except ValueError:
+                    return None
+
+            if len(times) >= 1 and hasattr(schedule, 'start_time'):
+                parsed = parse_to_24hr(times[0])
+                if parsed: schedule.start_time = parsed
+            if len(times) >= 2 and hasattr(schedule, 'end_time'):
+                parsed = parse_to_24hr(times[1])
+                if parsed: schedule.end_time = parsed
+
         schedule.save()
         return Response({'message': 'Class added successfully'}, status=status.HTTP_201_CREATED)
     
@@ -394,3 +421,62 @@ class ClassAttendanceSummaryView(APIView):
 
         data["students"].sort(key=lambda x: x['last_name'])
         return Response(data)
+    
+class ScheduleManageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, schedule_id):
+        try:
+            schedule = ClassSchedule.objects.get(class_id=schedule_id, teacher=request.user)
+        except ClassSchedule.DoesNotExist:
+            return Response({'error': 'Schedule not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        
+        if 'subject' in data:
+            subject_instance, _ = Subject.objects.get_or_create(
+                code=data['subject'],
+                defaults={'title': data.get('title', data['subject'])}
+            )
+            schedule.subject = subject_instance
+            
+        if 'section' in data:
+            section_instance, _ = Section.objects.get_or_create(name=data['section'])
+            schedule.section = section_instance
+
+        if hasattr(schedule, 'room') and 'room' in data:
+            schedule.room = data['room']
+        if hasattr(schedule, 'days') and 'days' in data:
+            days_list = data['days']
+            schedule.days = ', '.join(days_list) if isinstance(days_list, list) else days_list
+
+        if 'time' in data:
+            time_input = data['time']
+            times = re.findall(r'\d{1,2}:\d{2}(?:\s?[aApP][mM])?', time_input)
+            
+            def parse_to_24hr(t_str):
+                t_str = t_str.strip().upper().replace('AM', ' AM').replace('PM', ' PM').replace('  ', ' ')
+                try:
+                    if 'AM' in t_str or 'PM' in t_str:
+                        return datetime.strptime(t_str, '%I:%M %p').time()
+                    return datetime.strptime(t_str, '%H:%M').time()
+                except ValueError:
+                    return None
+
+            if len(times) >= 1 and hasattr(schedule, 'start_time'):
+                parsed = parse_to_24hr(times[0])
+                if parsed: schedule.start_time = parsed
+            if len(times) >= 2 and hasattr(schedule, 'end_time'):
+                parsed = parse_to_24hr(times[1])
+                if parsed: schedule.end_time = parsed
+
+        schedule.save()
+        return Response({'message': 'Schedule updated successfully'})
+
+    def delete(self, request, schedule_id):
+        try:
+            schedule = ClassSchedule.objects.get(class_id=schedule_id, teacher=request.user)
+            schedule.delete()
+            return Response({'message': 'Schedule deleted'}, status=status.HTTP_204_NO_CONTENT)
+        except ClassSchedule.DoesNotExist:
+            return Response({'error': 'Schedule not found'}, status=status.HTTP_404_NOT_FOUND)

@@ -8,6 +8,7 @@ class ClassSchedule(models.Model):
     section = models.ForeignKey('students.Section', on_delete=models.CASCADE)
     teacher = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
     room = models.CharField(max_length=50)
+    days = models.CharField(max_length=100, blank=True, null=True, default='TBA')
     days_of_week = models.CharField(max_length=50, null=True, blank=True, help_text="e.g., M-W-F or T-Th")
     start_time = models.TimeField(null=True, blank=True)
     end_time = models.TimeField(null=True, blank=True)
