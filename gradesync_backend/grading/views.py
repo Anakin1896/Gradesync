@@ -3,6 +3,7 @@ import re
 from datetime import date, datetime
 from students.models import Student
 from students.models import Student, Section
+from .models import Event
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -480,3 +481,37 @@ class ScheduleManageView(APIView):
             return Response({'message': 'Schedule deleted'}, status=status.HTTP_204_NO_CONTENT)
         except ClassSchedule.DoesNotExist:
             return Response({'error': 'Schedule not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+class EventListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        
+        events = Event.objects.filter(teacher=request.user, date__gte=date.today())
+        
+        data = [{"id": e.id, "text": e.title, "date": e.date.strftime('%Y-%m-%d')} for e in events]
+        return Response(data)
+
+    def post(self, request):
+        title = request.data.get('text')
+        date_str = request.data.get('date')
+        
+        if not title or not date_str:
+            return Response({'error': 'Title and Date are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        event = Event.objects.create(teacher=request.user, title=title, date=date_str)
+        
+        return Response({
+            "id": event.id, "text": event.title, "date": date_str
+        }, status=status.HTTP_201_CREATED)
+
+class EventDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, event_id):
+        try:
+            event = Event.objects.get(id=event_id, teacher=request.user)
+            event.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Event.DoesNotExist:
+            return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
