@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Users, BookOpen, Calendar as CalendarIcon, Loader2, ArrowRight, X, Save, Clock, MapPin, Edit3, Trash2, ChevronLeft, AlertTriangle, Layers, CalendarDays } from 'lucide-react';
+import { Plus, Users, BookOpen, Calendar as CalendarIcon, Loader2, ArrowRight, X, Save, Clock, MapPin, Edit3, Trash2, ChevronLeft, Layers, CalendarDays } from 'lucide-react';
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('Overview');
@@ -7,13 +7,14 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [availableTemplates, setAvailableTemplates] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    subject: '', title: '', section: 'Block A', room: '', time: '', days: []
+    subject: '', title: '', section: 'Block A', room: '', time: '', days: [], grading_template_id: '' 
   });
 
   const [selectedSubject, setSelectedSubject] = useState(null);
@@ -43,6 +44,11 @@ const Dashboard = () => {
     fetch('http://127.0.0.1:8000/api/grading/available-subjects/', { headers: getAuthHeaders() })
       .then(res => res.json())
       .then(data => setAvailableSubjects(data))
+      .catch(err => console.error(err));
+
+    fetch('http://127.0.0.1:8000/api/grading/grading-templates/', { headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => setAvailableTemplates(data))
       .catch(err => console.error(err));
 
     fetchEvents();
@@ -85,7 +91,6 @@ const Dashboard = () => {
     } catch (err) { console.error(err); }
   };
 
-
   const handleDayToggle = (day) => {
     setFormData(prev => {
       const currentDays = prev.days;
@@ -96,16 +101,17 @@ const Dashboard = () => {
 
   const openAddModal = () => {
     setEditingId(null);
-    setFormData({ subject: '', title: '', section: 'Block A', room: '', time: '', days: [] });
+    setFormData({ subject: '', title: '', section: 'Block A', room: '', time: '', days: [], grading_template_id: '' });
     setIsModalOpen(true);
   };
 
   const openEditModal = (cls) => {
     setEditingId(cls.id);
     const dayArray = cls.days && cls.days !== 'TBA' ? cls.days.split(', ') : [];
+    const templateId = cls.grading_template ? cls.grading_template.id : (cls.grading_template_id || '');
     setFormData({
       subject: cls.subject, title: cls.title, section: cls.section, room: cls.room !== 'TBA' ? cls.room : '', 
-      time: cls.time !== 'TBA' ? cls.time : '', days: dayArray
+      time: cls.time !== 'TBA' ? cls.time : '', days: dayArray, grading_template_id: templateId
     });
     setIsModalOpen(true);
   };
@@ -129,8 +135,11 @@ const Dashboard = () => {
     const url = editingId ? `http://127.0.0.1:8000/api/grading/schedule/${editingId}/` : 'http://127.0.0.1:8000/api/grading/dashboard/';
     const method = editingId ? 'PUT' : 'POST';
 
+    const payload = { ...formData };
+    if (!payload.grading_template_id) payload.grading_template_id = null;
+
     try {
-      const response = await fetch(url, { method: method, headers: getAuthHeaders(), body: JSON.stringify(formData) });
+      const response = await fetch(url, { method: method, headers: getAuthHeaders(), body: JSON.stringify(payload) });
       if (response.ok) {
         setIsModalOpen(false);
         fetchData(); 
@@ -194,7 +203,6 @@ const Dashboard = () => {
 
     const hasEvent = (dayNum) => {
       if (!dayNum) return false;
-
       const cellDateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
       return events.some(e => e.date === cellDateStr);
     };
@@ -495,6 +503,22 @@ const Dashboard = () => {
             
             <form onSubmit={handleSaveClass}>
               <div className="p-6 space-y-5">
+
+                <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-xl mb-2">
+                  <label className="block text-xs font-bold text-amber-700 tracking-wider mb-2">GRADING TEMPLATE (RULES)</label>
+                  <select 
+                    value={formData.grading_template_id} 
+                    onChange={(e) => setFormData({...formData, grading_template_id: e.target.value})}
+                    className="w-full px-4 py-2 bg-white border border-amber-200 rounded-lg text-sm font-semibold focus:border-amber-400 focus:outline-none text-[#1A1C29] cursor-pointer"
+                  >
+                    <option value="">-- Standard Direct Average --</option>
+                    {availableTemplates.map(t => (
+                      <option key={t.id} value={t.id}>{t.name} (Base {t.transmutation_base})</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-amber-600/80 mt-1 font-semibold">Select how grades will be computed for this specific class.</p>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="relative">
                     <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5">SUBJECT CODE *</label>
