@@ -9,11 +9,30 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Avg, Max, Min
-from .models import ClassSchedule, TeacherSchedule, Enrollment, Attendance, GradingComponent, Assessment, StudentScore
+from .models import (
+    ClassSchedule, TeacherSchedule, Enrollment, Attendance, 
+    GradingComponent, Assessment, StudentScore,
+    GradingTemplate, PeriodGrade 
+)
 from .serializers import (
     ClassScheduleSerializer, TeacherScheduleSerializer, EnrollmentSerializer, 
-    AttendanceSerializer, GradingComponentSerializer, AssessmentSerializer, StudentScoreSerializer
+    AttendanceSerializer, GradingComponentSerializer, AssessmentSerializer, 
+    StudentScoreSerializer, GradingTemplateSerializer, PeriodGradeSerializer
 )
+
+class GradingTemplateViewSet(viewsets.ModelViewSet):
+    serializer_class = GradingTemplateSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return GradingTemplate.objects.filter(teacher=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(teacher=self.request.user)
+
+class PeriodGradeViewSet(viewsets.ModelViewSet):
+    queryset = PeriodGrade.objects.all()
+    serializer_class = PeriodGradeSerializer
 
 class ClassScheduleViewSet(viewsets.ModelViewSet):
     queryset = ClassSchedule.objects.all()

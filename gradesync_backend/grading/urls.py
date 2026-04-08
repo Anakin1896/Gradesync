@@ -3,6 +3,8 @@ from rest_framework.routers import DefaultRouter
 from . import views
 
 router = DefaultRouter()
+router.register(r'grading-templates', views.GradingTemplateViewSet, basename='grading-template')
+router.register(r'period-grades', views.PeriodGradeViewSet, basename='period-grade')
 router.register(r'class-schedules', views.ClassScheduleViewSet)
 router.register(r'teacher-schedules', views.TeacherScheduleViewSet)
 router.register(r'enrollments', views.EnrollmentViewSet)
