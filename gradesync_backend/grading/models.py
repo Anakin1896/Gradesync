@@ -8,6 +8,7 @@ class ClassSchedule(models.Model):
     subject = models.ForeignKey('core.Subject', on_delete=models.CASCADE)
     section = models.ForeignKey('students.Section', on_delete=models.CASCADE)
     teacher = models.ForeignKey('accounts.User', on_delete=models.CASCADE)
+    grading_template = models.ForeignKey('GradingTemplate', on_delete=models.SET_NULL, null=True, blank=True)
     room = models.CharField(max_length=50)
     days = models.CharField(max_length=100, blank=True, null=True, default='TBA')
     days_of_week = models.CharField(max_length=50, null=True, blank=True, help_text="e.g., M-W-F or T-Th")
@@ -37,36 +38,47 @@ class Enrollment(models.Model):
     remarks = models.CharField(max_length=20, null=True, blank=True)
     enrolled_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
 
-    pre_midterm_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    midterm_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    pre_final_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    final_period_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-
     def calculate_final_grade(self):
-
         period_grades = self.period_grades.all()
-
         if not period_grades.exists():
             return None
 
-        total = sum([pg.computed_grade for pg in period_grades if pg.computed_grade is not None])
-        count = period_grades.filter(computed_grade__isnull=False).count()
-        
-        if count > 0:
+        template = self.class_field.grading_template
+        final_computed_grade = 0
+        total_weight_applied = 0
 
-            self.final_grade = round(total / count, 2)
+        if template and template.items.filter(period__isnull=False).exists():
+            for pg in period_grades:
+                if pg.computed_grade is not None:
+                    template_item = template.items.filter(period=pg.period).first()
+                    weight = template_item.weight_percentage if template_item else 0
+                    
+                    final_computed_grade += float(pg.computed_grade) * (float(weight) / 100)
+                    total_weight_applied += float(weight)
 
-            if self.final_grade >= 75:
-                self.remarks = "Passed"
-            elif self.final_grade >= 70:
-                self.remarks = "Conditional"
+            if total_weight_applied > 0:
+                self.final_grade = round((final_computed_grade / total_weight_applied) * 100, 2)
             else:
-                self.remarks = "Failed"
+                self.final_grade = 0
+
+        else:
+            total = sum([pg.computed_grade for pg in period_grades if pg.computed_grade is not None])
+            count = period_grades.filter(computed_grade__isnull=False).count()
+            if count > 0:
+                self.final_grade = round(total / count, 2)
+
+            if self.final_grade is not None:
+                if self.final_grade >= 75:
+                    self.remarks = "Passed"
+                elif self.final_grade >= 70:
+                    self.remarks = "Conditional"
+                else:
+                    self.remarks = "Failed"
                 
-            self.save()
-            return self.final_grade
+                self.save()
+                return self.final_grade
             
-        return None
+            return None
 
     def __str__(self):
         return f"{self.student.last_name} enrolled in {self.class_field.subject.code}"
@@ -114,21 +126,21 @@ class PeriodGrade(models.Model):
     grade_id = models.AutoField(primary_key=True)
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE, related_name='period_grades')
     period = models.ForeignKey('core.Period', on_delete=models.CASCADE)
-
     computed_grade = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
 
     class Meta:
         unique_together = ('enrollment', 'period')
 
     def calculate_grade(self):
-
         total_period_grade = 0
         class_schedule = self.enrollment.class_field
+        template = class_schedule.grading_template
+        base = template.transmutation_base if template else 0
+        multiplier = 100 - base
 
         components = GradingComponent.objects.filter(class_field=class_schedule)
         
         for component in components:
-
             assessments = Assessment.objects.filter(component=component, period=self.period)
             
             if not assessments.exists():
@@ -143,10 +155,8 @@ class PeriodGrade(models.Model):
 
             if total_perfect_score > 0:
               
-                transmuted_grade = (float(student_scores) / float(total_perfect_score)) * 40 + 60
-
+                transmuted_grade = (float(student_scores) / float(total_perfect_score)) * multiplier + base
                 weighted_score = transmuted_grade * (float(component.weight_percentage) / 100)
-
                 total_period_grade += weighted_score
 
 
@@ -169,3 +179,28 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.date})"
+
+class GradingTemplate(models.Model):
+    BASE_CHOICES = [
+        (0, 'Base 0 (Straight Percentage)'),
+        (50, 'Base 50 (Standard K-12)'),
+        (60, 'Base 60 (College Standard)'),
+    ]
+
+    teacher = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='grading_templates')
+    name = models.CharField(max_length=100)
+    is_default = models.BooleanField(default=False)
+    transmutation_base = models.IntegerField(choices=BASE_CHOICES, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.teacher.last_name})"
+
+class TemplateItem(models.Model):
+    template = models.ForeignKey(GradingTemplate, on_delete=models.CASCADE, related_name='items')
+    name = models.CharField(max_length=50) 
+    weight_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    period = models.ForeignKey('core.Period', on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.weight_percentage}%"
