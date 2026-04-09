@@ -247,6 +247,9 @@ const Activities = () => {
     return acc;
   }, {});
 
+  const selectedClass = classes.find(c => c.id.toString() === selectedClassId);
+  const templatePeriods = selectedClass?.grading_template?.items || [];
+
   return (
     <div className="max-w-6xl animate-in fade-in duration-300 relative pb-10">
       
@@ -255,7 +258,19 @@ const Activities = () => {
           <h1 className="text-3xl font-serif font-bold text-[#1A1C29]">Activities</h1>
           <p className="text-gray-500 mt-1">Manage quizzes, exams, and class activities</p>
         </div>
-        <button onClick={() => setIsModalOpen(true)} className="flex items-center space-x-2 bg-amber-400 hover:bg-amber-500 text-[#1A1C29] px-5 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm">
+        <button 
+          onClick={() => {
+            setFormData({
+              title: '', 
+              type: 'Quiz', 
+              period: templatePeriods.length > 0 ? templatePeriods[0].name : '', 
+              perfect_score: 100, 
+              date: ''
+            });
+            setIsModalOpen(true);
+          }} 
+          className="flex items-center space-x-2 bg-amber-400 hover:bg-amber-500 text-[#1A1C29] px-5 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm"
+        >
           <Plus size={18} /><span>Add Activity</span>
         </button>
       </div>
@@ -358,8 +373,18 @@ const Activities = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5">GRADING PERIOD</label>
-                    <select value={formData.period} onChange={(e) => setFormData({...formData, period: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold focus:border-amber-400 focus:outline-none">
-                      <option value="Pre-Midterm">Pre-Midterm</option><option value="Midterm">Midterm</option><option value="Pre-Finals">Pre-Finals</option><option value="Finals">Finals</option>
+                    <select 
+                      value={formData.period} 
+                      onChange={(e) => setFormData({...formData, period: e.target.value})} 
+                      className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold focus:border-amber-400 focus:outline-none"
+                    >
+                      {templatePeriods.length === 0 ? (
+                        <option value="">No Template Assigned</option>
+                      ) : (
+                        templatePeriods.map((p, index) => (
+                          <option key={index} value={p.name}>{p.name}</option>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>

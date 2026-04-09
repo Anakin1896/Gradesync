@@ -8,14 +8,38 @@ from .models import (
 class TemplateItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = TemplateItem
-        fields = '__all__'
+        fields = ['name', 'weight_percentage']
 
 class GradingTemplateSerializer(serializers.ModelSerializer):
-    items = TemplateItemSerializer(many=True, read_only=True)
+
+    items = TemplateItemSerializer(many=True)
+    teacher = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = GradingTemplate
         fields = ['id', 'teacher', 'name', 'transmutation_base', 'is_default', 'created_at', 'items']
+
+    def create(self, validated_data):
+
+        items_data = validated_data.pop('items', [])
+        template = GradingTemplate.objects.create(**validated_data)
+
+        for item_data in items_data:
+            from core.models import Period
+
+            period_instance, _ = Period.objects.get_or_create(
+                name=item_data.get('name'), 
+                defaults={'sequence_order': 99}
+            )
+
+            TemplateItem.objects.create(
+                template=template,
+                period=period_instance,
+                name=item_data.get('name'),
+                weight_percentage=item_data.get('weight_percentage')
+            )
+            
+        return template
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
     grading_template = GradingTemplateSerializer(read_only=True)

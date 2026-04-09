@@ -92,7 +92,8 @@ class DashboardView(APIView):
                 "section": s.section.name if s.section else "TBA",
                 "days": getattr(s, 'days', 'TBA'), 
                 "time": time_str,
-                "room": getattr(s, 'room', 'TBA')
+                "room": getattr(s, 'room', 'TBA'),
+                "grading_template_id": s.grading_template.id if s.grading_template else ""
             })
 
         teacher_name = f"{user.first_name} {user.last_name}".strip()
@@ -115,12 +116,34 @@ class DashboardView(APIView):
             code=data.get('subject', 'NEW 101'),
             defaults={'title': data.get('title', 'New Subject')}
         )
+
+        program_instance, _ = Program.objects.get_or_create(
+            code="GEN", defaults={"name": "General Program"}
+        )
         
-        section_instance, _ = Section.objects.get_or_create(name=data.get('section', 'Block A'))
-        term_instance = AcademicTerm.objects.first()
+        section_instance, _ = Section.objects.get_or_create(
+            name=data.get('section', 'Block A'),
+            defaults={'program': program_instance}
+        )
+
+        term_instance = AcademicTerm.objects.filter(is_active=True).first()
+        if not term_instance:
+            term_instance, _ = AcademicTerm.objects.get_or_create(
+                school_year="2025-2026",
+                defaults={"start_date": date.today(), "end_date": date.today(), "is_active": True}
+            )
+
+        template_id = data.get('grading_template_id')
+        template_instance = None
+        if template_id:
+            template_instance = GradingTemplate.objects.filter(id=template_id, teacher=user).first()
         
         schedule = ClassSchedule(
-            teacher=user, subject=subject_instance, section=section_instance, term=term_instance
+            teacher=user, 
+            subject=subject_instance, 
+            section=section_instance, 
+            term=term_instance,
+            grading_template=template_instance
         )
         
         if hasattr(schedule, 'room'):
@@ -134,7 +157,6 @@ class DashboardView(APIView):
             times = re.findall(r'\d{1,2}:\d{2}(?:\s?[aApP][mM])?', time_input)
             
             def parse_to_24hr(t_str):
-
                 t_str = t_str.strip().upper().replace('AM', ' AM').replace('PM', ' PM').replace('  ', ' ')
                 try:
                     if 'AM' in t_str or 'PM' in t_str:
@@ -461,7 +483,8 @@ class ScheduleManageView(APIView):
             schedule.subject = subject_instance
             
         if 'section' in data:
-            section_instance, _ = Section.objects.get_or_create(name=data['section'])
+            program_instance, _ = Program.objects.get_or_create(code="GEN", defaults={"name": "General Program"})
+            section_instance, _ = Section.objects.get_or_create(name=data['section'], defaults={'program': program_instance})
             schedule.section = section_instance
 
         if hasattr(schedule, 'room') and 'room' in data:
@@ -469,6 +492,13 @@ class ScheduleManageView(APIView):
         if hasattr(schedule, 'days') and 'days' in data:
             days_list = data['days']
             schedule.days = ', '.join(days_list) if isinstance(days_list, list) else days_list
+
+        if 'grading_template_id' in data:
+            template_id = data['grading_template_id']
+            if template_id:
+                schedule.grading_template = GradingTemplate.objects.filter(id=template_id, teacher=request.user).first()
+            else:
+                schedule.grading_template = None
 
         if 'time' in data:
             time_input = data['time']

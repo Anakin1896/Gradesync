@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
@@ -10,9 +10,29 @@ import Activities from './components/Activities';
 import Attendance from './components/Attendance';
 import Settings from './components/Settings';
 
-
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
+
+  useEffect(() => {
+    const originalFetch = window.fetch;
+    
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+
+      if (response.status === 401 && !args[0].includes('/api/token/')) {
+        if (localStorage.getItem('auth_token')) {
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('refresh_token');
+          window.location.reload(); 
+        }
+      }
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');

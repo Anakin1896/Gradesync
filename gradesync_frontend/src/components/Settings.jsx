@@ -223,7 +223,7 @@ const Settings = () => {
               </select>
             </div>
 
-            <div className="flex items-center justify-between py-3 border-b border-gray-50">
+            {/*<div className="flex items-center justify-between py-3 border-b border-gray-50">
               <div>
                 <h3 className="font-bold text-[#1A1C29] text-sm">Language</h3>
                 <p className="text-sm text-gray-500 mt-0.5">Interface language</p>
@@ -235,7 +235,7 @@ const Settings = () => {
                 <option value="English (PH)">English (PH)</option>
                 <option value="Tagalog">Tagalog</option>
               </select>
-            </div>
+            </div> */}
 
             <div className="pt-4 flex items-center gap-4">
               <button 
