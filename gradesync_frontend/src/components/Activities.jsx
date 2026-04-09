@@ -12,7 +12,7 @@ const Activities = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
-    title: '', type: 'Quiz', period: 'Pre-Midterm', perfect_score: 100, date: ''
+    title: '', type: 'Quiz', period: '', perfect_score: 100, date: ''
   });
 
   const [gradingActivity, setGradingActivity] = useState(null);
@@ -24,15 +24,20 @@ const Activities = () => {
     'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
   });
 
+  const selectedClass = classes.find(c => c.id.toString() === selectedClassId);
+  const templatePeriods = selectedClass?.grading_template?.items || [];
+  const transmutationBase = selectedClass?.grading_template ? Number(selectedClass.grading_template.transmutation_base) : 60;
+  const multiplier = 100 - transmutationBase;
+
   useEffect(() => {
     fetch('http://127.0.0.1:8000/api/grading/dashboard/', { headers: getAuthHeaders() })
       .then(res => res.json())
       .then(data => {
         if (data.classes) {
-
           const teacherClasses = data.classes.map(cls => ({
             id: cls.id.toString(),
-            name: `${cls.subject} — ${cls.section}`
+            name: `${cls.subject} — ${cls.section}`,
+            grading_template: cls.grading_template
           }));
           
           setClasses(teacherClasses);
@@ -66,7 +71,7 @@ const Activities = () => {
       });
       if (response.ok) {
         setIsModalOpen(false);
-        setFormData({ title: '', type: 'Quiz', period: 'Pre-Midterm', perfect_score: 100, date: '' });
+        setFormData({ title: '', type: 'Quiz', period: templatePeriods.length > 0 ? templatePeriods[0].name : '', perfect_score: 100, date: '' });
         fetchActivities(); 
       }
     } catch (err) { console.error(err); } finally { setIsSaving(false); }
@@ -79,11 +84,10 @@ const Activities = () => {
     
     if (numPerf <= 0) return '--';
 
-    let weighted = (numRaw / numPerf) * 40 + 60;
-
-    weighted = Math.max(60, Math.min(100, weighted));
+    let transmuted = (numRaw / numPerf) * multiplier + transmutationBase;
+    transmuted = Math.max(transmutationBase, Math.min(100, transmuted));
     
-    return weighted.toFixed(2) + '%';
+    return transmuted.toFixed(2) + '%';
   };
 
   const openGradingPanel = (activity) => {
@@ -101,7 +105,6 @@ const Activities = () => {
   };
 
   const handleScoreChange = (studentNumber, newValue) => {
-
     setRosterScores(prev => prev.map(s => 
       s.student_number === studentNumber ? { ...s, raw_score: newValue, saveStatus: 'saving' } : s
     ));
@@ -113,11 +116,9 @@ const Activities = () => {
     })
     .then(res => {
       if (res.ok) {
-
         setRosterScores(prev => prev.map(s => 
           s.student_number === studentNumber ? { ...s, saveStatus: 'saved' } : s
         ));
-
         setTimeout(() => {
           setRosterScores(current => current.map(s => 
             s.student_number === studentNumber ? { ...s, saveStatus: 'idle' } : s
@@ -168,7 +169,7 @@ const Activities = () => {
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider w-1/3">STUDENT NAME</th>
                 <th className="p-4 text-[11px] font-bold text-amber-600 tracking-wider text-right bg-amber-50/50">RAW SCORE</th>
-                <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider text-center">WEIGHTED SCORE (Base-60)</th>
+                <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider text-center">TRANSMUTED SCORE (Base-{transmutationBase})</th>
                 <th className="p-4 text-[11px] font-bold text-gray-400 tracking-wider w-24 text-center">STATUS</th>
               </tr>
             </thead>
@@ -237,7 +238,7 @@ const Activities = () => {
     if (activeTab === 'All') return true;
     if (activeTab === 'Quizzes' && a.type === 'Quiz') return true;
     if (activeTab === 'Exams' && a.type === 'Exam') return true;
-    if (activeTab === 'Activities' && (a.type === 'Activity' || a.type === 'Project')) return true;
+    if (activeTab === 'Activities' && (a.type === 'Activity' || a.type === 'Project' || a.type === 'Recitation' || a.type === 'Attendance')) return true;
     return false;
   });
   
@@ -246,9 +247,6 @@ const Activities = () => {
     acc[current.period].push(current);
     return acc;
   }, {});
-
-  const selectedClass = classes.find(c => c.id.toString() === selectedClassId);
-  const templatePeriods = selectedClass?.grading_template?.items || [];
 
   return (
     <div className="max-w-6xl animate-in fade-in duration-300 relative pb-10">
@@ -324,9 +322,9 @@ const Activities = () => {
                     if (item.type === 'Activity') badgeColor = "bg-emerald-50 text-emerald-600 font-bold";
                     if (item.type === 'Exam') badgeColor = "bg-purple-50 text-purple-600 font-bold";
                     if (item.type === 'Project') badgeColor = "bg-orange-50 text-orange-600 font-bold"; 
+                    if (item.type === 'Recitation' || item.type === 'Attendance') badgeColor = "bg-pink-50 text-pink-600 font-bold"; 
 
                     return (
-                      
                       <tr key={item.id} onClick={() => openGradingPanel(item)} className="hover:bg-amber-50/30 transition-colors cursor-pointer group">
                         <td className="p-4 font-bold text-[#1A1C29] text-sm group-hover:text-amber-600 transition-colors flex items-center gap-2">
                           {item.title}
@@ -368,7 +366,12 @@ const Activities = () => {
                   <div>
                     <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5">TYPE</label>
                     <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold focus:border-amber-400 focus:outline-none">
-                      <option value="Quiz">Quiz</option><option value="Activity">Activity</option><option value="Exam">Exam</option><option value="Project">Project</option>
+                      <option value="Quiz">Quiz</option>
+                      <option value="Activity">Activity</option>
+                      <option value="Exam">Exam</option>
+                      <option value="Project">Project</option>
+                      <option value="Recitation">Recitation</option>
+                      <option value="Attendance">Attendance</option>
                     </select>
                   </div>
                   <div>

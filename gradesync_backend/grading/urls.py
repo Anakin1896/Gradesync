@@ -26,5 +26,7 @@ urlpatterns = [
     path('schedule/<int:schedule_id>/', views.ScheduleManageView.as_view(), name='manage-schedule'),
     path('events/', views.EventListView.as_view(), name='events-list'),
     path('events/<int:event_id>/', views.EventDetailView.as_view(), name='event-detail'),
+    path('class-components/<str:class_id>/', views.ClassComponentsView.as_view(), name='class-components'),
+    path('student-breakdown/<str:class_id>/<str:student_number>/<str:period_name>/', views.StudentPeriodBreakdownView.as_view(), name='student-breakdown'),
     path('', include(router.urls)),
 ]

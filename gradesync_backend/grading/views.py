@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Avg, Max, Min
+from urllib.parse import unquote
 from .models import (
     ClassSchedule, TeacherSchedule, Enrollment, Attendance, 
     GradingComponent, Assessment, StudentScore,
@@ -319,32 +320,39 @@ class ClassActivitiesView(APIView):
         return Response(data)
 
     def post(self, request, class_id):
-
         user = request.user
         data = request.data
+
         schedule = ClassSchedule.objects.filter(class_id=class_id, teacher=user).first()
         
         if not schedule:
              return Response({'error': 'Class not found'}, status=404)
 
-        period_name = data.get('period', 'Pre-Midterm')
-        period, _ = Period.objects.get_or_create(name=period_name, defaults={'sequence_order': 1})
+        period_name = data.get('period')
+        if not period_name:
+            return Response(
+                {'error': 'Grading Period is required. Please assign a Template in the Dashboard.'}, 
+                status=400
+            )
+
+        period, _ = Period.objects.get_or_create(name=period_name, defaults={'sequence_order': 99})
 
         a_type = data.get('type', 'Activity')
         component, _ = GradingComponent.objects.get_or_create(
             class_field=schedule,
             name=f"{a_type}s",
-            defaults={'weight_percentage': 25.00}
+            defaults={'weight_percentage': 0.0}
         )
 
-        Assessment.objects.create(
+        Assessment.objects.create( 
             component=component,
             period=period,
             title=data.get('title'),
             assessment_type=a_type,
             total_points=data.get('perfect_score', 100),
-            date_given=data.get('date')
+            date_given=data.get('date') or None
         )
+        
         return Response({'message': 'Activity created successfully!'}, status=201)
     
 class ActivityScoringView(APIView):
@@ -386,19 +394,63 @@ class ActivityScoringView(APIView):
 
         if not enrollment or not assessment:
             return Response({'error': 'Invalid data'}, status=400)
-            
-        if raw_score == '' or raw_score is None:
 
+        if raw_score == '' or raw_score is None:
             StudentScore.objects.filter(assessment=assessment, enrollment=enrollment).delete()
         else:
-
             StudentScore.objects.update_or_create(
                 assessment=assessment,
                 enrollment=enrollment, 
                 defaults={'score': raw_score}
             )
+
+        class_field = assessment.component.class_field
+        period = assessment.period
+        template = class_field.grading_template
+        transmutation_base = template.transmutation_base if template else 60
+
+        components = GradingComponent.objects.filter(class_field=class_field)
+        
+        total_period_grade = 0
+        total_active_weight = 0
+
+        for comp in components:
+            assessments = Assessment.objects.filter(component=comp, period=period)
+            if not assessments.exists():
+                continue
+
+            student_scores = StudentScore.objects.filter(assessment__in=assessments, enrollment=enrollment)
+            if not student_scores.exists():
+                continue 
+
+            graded_assessment_ids = student_scores.values_list('assessment_id', flat=True)
+            graded_assessments = assessments.filter(assessment_id__in=graded_assessment_ids)
             
-        return Response({'message': 'Score saved'})
+            perfect_total = sum(a.total_points for a in graded_assessments)
+            raw_total = sum(s.score for s in student_scores)
+
+            if perfect_total > 0:
+                percentage = (float(raw_total) / float(perfect_total)) * (100 - transmutation_base) + transmutation_base
+                comp_weight = float(comp.weight_percentage or 0)
+                
+                weighted_score = percentage * (comp_weight / 100.0)
+                
+                total_period_grade += weighted_score
+                total_active_weight += comp_weight
+
+        if total_active_weight > 0:
+            total_period_grade = (total_period_grade / total_active_weight) * 100
+            total_period_grade = min(100.0, max(float(transmutation_base), total_period_grade))
+
+            PeriodGrade.objects.update_or_create(
+                enrollment=enrollment,
+                period=period,
+                defaults={'computed_grade': round(total_period_grade, 2)}
+            )
+        else:
+            PeriodGrade.objects.filter(enrollment=enrollment, period=period).delete()
+
+        return Response({'message': 'Score saved & Gradebook updated!'})
 
 class ClassAttendanceView(APIView):
     permission_classes = [IsAuthenticated]
@@ -582,3 +634,95 @@ class EventDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Event.DoesNotExist:
             return Response({'error': 'Event not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+class ClassComponentsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, class_id):
+        schedule = ClassSchedule.objects.filter(class_id=class_id, teacher=request.user).first()
+        if not schedule:
+            return Response({'error': 'Class not found'}, status=404)
+        
+        components = GradingComponent.objects.filter(class_field=schedule)
+        
+        data = []
+        for c in components:
+            safe_weight = c.weight_percentage if c.weight_percentage is not None else 0.0
+            data.append({
+                "id": c.pk, 
+                "name": c.name, 
+                "weight_percentage": float(safe_weight)
+            })
+            
+        return Response(data)
+
+    def put(self, request, class_id):
+        schedule = ClassSchedule.objects.filter(class_id=class_id, teacher=request.user).first()
+        if not schedule:
+            return Response({'error': 'Class not found'}, status=404)
+
+        components_data = request.data.get('components', [])
+        for comp in components_data:
+            comp_id = comp.get('id')
+            comp_name = comp.get('name', '').strip()
+            comp_weight = comp.get('weight_percentage', 0.0)
+
+            if not comp_name:
+                continue
+
+            if comp_id:
+
+                GradingComponent.objects.filter(pk=comp_id, class_field=schedule).update(
+                    name=comp_name,
+                    weight_percentage=comp_weight
+                )
+            else:
+
+                GradingComponent.objects.update_or_create(
+                    class_field=schedule,
+                    name=comp_name,
+                    defaults={'weight_percentage': comp_weight}
+                )
+            
+        return Response({'message': 'Component weights updated successfully'})
+
+class StudentPeriodBreakdownView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, class_id, student_number, period_name):
+        clean_period_name = unquote(period_name)
+        schedule = ClassSchedule.objects.filter(class_id=class_id, teacher=request.user).first()
+        if not schedule:
+            return Response({'error': 'Class not found'}, status=404)
+        
+        try:
+            
+            assessments = Assessment.objects.filter(
+                component__class_field=schedule, 
+                period__name__iexact=clean_period_name
+            ).select_related('component')
+            
+            scores = StudentScore.objects.filter(
+                assessment__in=assessments, 
+                enrollment__student__student_number=student_number,
+                enrollment__class_field=schedule
+            )
+
+            score_map = {s.assessment.pk: float(s.score) for s in scores}
+            
+            data = []
+            for a in assessments:
+                data.append({
+                    "assessment_id": a.pk,
+                    "title": a.title,
+                    "type": a.component.name if a.component else "Uncategorized",
+                    "component_weight": float(a.component.weight_percentage) if a.component and a.component.weight_percentage else 0.0,
+                    "perfect_score": float(a.total_points or 100),
+                    "raw_score": score_map.get(a.pk, None)
+                })
+                
+            return Response(data)
+            
+        except Exception as e:
+            print(f"Drill-down breakdown error: {e}")
+            return Response({'error': 'Failed to load breakdown'}, status=500)
