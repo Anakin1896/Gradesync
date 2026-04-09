@@ -20,8 +20,8 @@ class User(AbstractUser):
 class UserSettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='settings')
     notifications_enabled = models.BooleanField(default=True)
-    active_school_year = models.CharField(max_length=20, default="2025-2026")
-    grading_system = models.CharField(max_length=50, default="60 (Base)")
+    active_school_year = models.CharField(max_length=100, default="2025-2026")
+    grading_system = models.CharField(max_length=50, default="75 (Standard)")
     language = models.CharField(max_length=20, default="English (PH)")
 
     def __str__(self):

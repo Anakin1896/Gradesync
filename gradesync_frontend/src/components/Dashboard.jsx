@@ -225,7 +225,9 @@ const Dashboard = () => {
     );
   };
 
-  if (isLoading) return <div className="flex h-full items-center justify-center text-gray-400"><Loader2 className="animate-spin" size={40} /></div>;
+  if (isLoading || !dashboardData || !dashboardData.classes) {
+  return <div className="flex h-full items-center justify-center text-gray-400"><Loader2 className="animate-spin" size={40} /></div>;
+}
 
   const { stats, classes, teacher_name, today_date } = dashboardData;
   

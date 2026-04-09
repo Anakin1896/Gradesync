@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import User, UserSettings
 from .serializers import UserSerializer, UserSettingsSerializer
+from core.models import AcademicTerm
+from datetime import date
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -40,6 +42,20 @@ class UserSettingsView(APIView):
         
         if serializer.is_valid():
             serializer.save()
+
+            school_year_str = request.data.get('active_school_year')
+            if school_year_str:
+                AcademicTerm.objects.get_or_create(
+                    school_year=school_year_str,
+                    defaults={
+                        'term_type': 'Semester',
+                        'name': school_year_str,
+                        'start_date': date.today(),
+                        'end_date': date.today(),
+                        'is_active': True
+                    }
+                )
+            
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     

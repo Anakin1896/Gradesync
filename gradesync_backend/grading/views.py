@@ -67,7 +67,7 @@ class DashboardView(APIView):
 
     def get(self, request):
         user = request.user
-        schedules = ClassSchedule.objects.filter(teacher=user).select_related('subject', 'section')
+        schedules = ClassSchedule.objects.filter(teacher=user).select_related('subject', 'section', 'grading_template')
 
         total_classes = schedules.count()
         total_students = Enrollment.objects.filter(class_field__in=schedules).values('student').distinct().count()
@@ -85,6 +85,23 @@ class DashboardView(APIView):
                     end_str = end.strftime('%I:%M %p').lstrip('0') if hasattr(end, 'strftime') else str(end)[:5]
                     time_str = f"{start_str} - {end_str}"
 
+                template_data = None
+                if s.grading_template:
+                    template_data = {
+                        "id": s.grading_template.id,
+                        "name": s.grading_template.name,
+                        "transmutation_base": s.grading_template.transmutation_base,
+                        "items": [
+                            {
+                                "id": item.id,
+                                "name": item.name,
+                                "weight_percentage": item.weight_percentage,
+                                "period": item.period.period_id if item.period else None
+                            }
+                            for item in s.grading_template.items.all()
+                        ]
+                    }
+
             class_list.append({
                 "id": s.class_id,
                 "subject": s.subject.code if s.subject else "TBA",
@@ -93,7 +110,8 @@ class DashboardView(APIView):
                 "days": getattr(s, 'days', 'TBA'), 
                 "time": time_str,
                 "room": getattr(s, 'room', 'TBA'),
-                "grading_template_id": s.grading_template.id if s.grading_template else ""
+                "grading_template_id": s.grading_template.id if s.grading_template else "",
+                "grading_template": template_data
             })
 
         teacher_name = f"{user.first_name} {user.last_name}".strip()

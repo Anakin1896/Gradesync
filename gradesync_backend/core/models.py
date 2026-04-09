@@ -18,7 +18,7 @@ class AcademicTerm(models.Model):
     ]
 
     term_id = models.AutoField(primary_key=True)
-    school_year = models.CharField(max_length=20)
+    school_year = models.CharField(max_length=100)
     term_type = models.CharField(max_length=20, choices=TERM_CHOICES, default='Semester')
     name = models.CharField(max_length=50, blank=True, null=True)
     start_date = models.DateField()

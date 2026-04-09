@@ -11,7 +11,6 @@ class TemplateItemSerializer(serializers.ModelSerializer):
         fields = ['name', 'weight_percentage']
 
 class GradingTemplateSerializer(serializers.ModelSerializer):
-
     items = TemplateItemSerializer(many=True)
     teacher = serializers.PrimaryKeyRelatedField(read_only=True)
 
@@ -20,26 +19,46 @@ class GradingTemplateSerializer(serializers.ModelSerializer):
         fields = ['id', 'teacher', 'name', 'transmutation_base', 'is_default', 'created_at', 'items']
 
     def create(self, validated_data):
-
         items_data = validated_data.pop('items', [])
         template = GradingTemplate.objects.create(**validated_data)
-
+        
         for item_data in items_data:
-            from core.models import Period
-
+            from core.models import Period 
             period_instance, _ = Period.objects.get_or_create(
                 name=item_data.get('name'), 
                 defaults={'sequence_order': 99}
             )
-
+            from .models import TemplateItem
             TemplateItem.objects.create(
                 template=template,
                 period=period_instance,
                 name=item_data.get('name'),
                 weight_percentage=item_data.get('weight_percentage')
             )
-            
         return template
+
+    def update(self, instance, validated_data):
+        items_data = validated_data.pop('items', [])
+
+        instance.name = validated_data.get('name', instance.name)
+        instance.transmutation_base = validated_data.get('transmutation_base', instance.transmutation_base)
+        instance.save()
+        instance.items.all().delete()
+        
+        for item_data in items_data:
+            from core.models import Period
+            period_instance, _ = Period.objects.get_or_create(
+                name=item_data.get('name'), 
+                defaults={'sequence_order': 99}
+            )
+            from .models import TemplateItem
+            TemplateItem.objects.create(
+                template=instance,
+                period=period_instance,
+                name=item_data.get('name'),
+                weight_percentage=item_data.get('weight_percentage')
+            )
+        return instance
 
 class ClassScheduleSerializer(serializers.ModelSerializer):
     grading_template = GradingTemplateSerializer(read_only=True)

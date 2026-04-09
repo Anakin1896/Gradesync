@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Users, Loader2, UserPlus, X, Save, ArrowLeft, Database, Trash2 } from 'lucide-react';
+import { Search, Users, Loader2, UserPlus, X, Save, ArrowLeft, Database, Trash2, BookOpen, GraduationCap, AlertTriangle } from 'lucide-react';
 
 const Students = () => {
   const [enrollments, setEnrollments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [rosterFilterProgram, setRosterFilterProgram] = useState('');
   const [rosterFilterYear, setRosterFilterYear] = useState('');
@@ -12,20 +12,25 @@ const Students = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalStep, setModalStep] = useState('selection'); 
-  const [isSaving, setIsSaving] = useState(false);
+  const [eduType, setEduType] = useState(''); 
   
+  const [isSaving, setIsSaving] = useState(false);
   const [unenrollModalData, setUnenrollModalData] = useState(null);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
-  
+
+  const [errorMessage, setErrorMessage] = useState('');
+
   const [formData, setFormData] = useState({
     student_number: '', first_name: '', last_name: '', sex: 'F', email: '', 
-    program: 'BSCS', current_year_level: 1, section: 'Block A', subject: '' 
+    program: '', current_year_level: 1, section: '', subject: '' 
   });
 
   const [availableStudents, setAvailableStudents] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [programs, setPrograms] = useState([]); 
   const [isFetchingGlobal, setIsFetchingGlobal] = useState(false);
   const [searchExisting, setSearchExisting] = useState('');
+
   const [filterProgram, setFilterProgram] = useState('');
   const [filterYear, setFilterYear] = useState('');
 
@@ -34,6 +39,11 @@ const Students = () => {
     'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
   });
 
+  const showError = (msg) => {
+    setErrorMessage(msg);
+    setTimeout(() => setErrorMessage(''), 3500);
+  };
+
   const fetchStudents = () => {
     fetch('http://127.0.0.1:8000/api/grading/enrollments/', { method: 'GET', headers: getAuthHeaders() })
       .then(res => res.json())
@@ -41,23 +51,29 @@ const Students = () => {
       .catch(err => { console.error("Failed to fetch:", err); setIsLoading(false); });
   };
 
-  const fetchSubjects = () => {
+  const fetchSubjectsAndPrograms = () => {
     fetch('http://127.0.0.1:8000/api/grading/available-subjects/', { method: 'GET', headers: getAuthHeaders() })
       .then(res => res.json())
       .then(data => { 
         setAvailableSubjects(data);
-        if (data.length > 0) {
-          setFormData(prev => ({ ...prev, subject: data[0].code }));
-        }
+        if (data.length > 0) setFormData(prev => ({ ...prev, subject: data[0].code }));
       })
       .catch(err => console.error("Failed to fetch subjects:", err));
+
+    fetch('http://127.0.0.1:8000/api/core/programs/', { method: 'GET', headers: getAuthHeaders() })
+      .then(res => res.json())
+      .then(data => {
+        setPrograms(data);
+        if (data.length > 0) setFormData(prev => ({ ...prev, program: data[0].code }));
+      })
+      .catch(err => console.error("Failed to fetch programs:", err));
   };
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       fetchStudents();
-      fetchSubjects(); 
+      fetchSubjectsAndPrograms(); 
     }
   }, []);
 
@@ -72,6 +88,7 @@ const Students = () => {
 
   const handleEnroll = async (studentData) => {
     setIsSaving(true);
+    setErrorMessage('');
     try {
       const response = await fetch('http://127.0.0.1:8000/api/grading/quick-enroll/', {
         method: 'POST',
@@ -80,12 +97,13 @@ const Students = () => {
       });
       if (response.ok) {
         closeModal();
-        fetchStudents(); 
+        fetchStudents();
       } else {
-        alert("Failed to enroll student. Check your inputs.");
+        showError("Failed to enroll student. Please check your inputs.");
       }
     } catch (error) {
       console.error("Error saving:", error);
+      showError("Network error occurred.");
     } finally {
       setIsSaving(false);
     }
@@ -100,7 +118,7 @@ const Students = () => {
       });
       if (response.ok) {
         setEnrollments(prev => prev.filter(e => e.enrollment_id !== unenrollModalData.id));
-        setUnenrollModalData(null); 
+        setUnenrollModalData(null);
       }
     } catch (err) { console.error("Error deleting:", err); } 
     finally { setIsUnenrolling(false); }
@@ -108,15 +126,30 @@ const Students = () => {
 
   const handleNewStudentSubmit = (e) => {
     e.preventDefault();
-    
+    if (!formData.section) {
+        showError("Please type or select a Section/Block in the header above.");
+        return;
+    }
     handleEnroll(formData);
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setModalStep('selection');
-    setFormData(prev => ({ ...prev, student_number: '', first_name: '', last_name: '', sex: 'F', email: '', program: 'BSCS', current_year_level: 1, section: 'Block A' }));
+    setEduType('');
+    setErrorMessage(''); 
+    setFormData(prev => ({ 
+        ...prev, student_number: '', first_name: '', last_name: '', sex: 'F', email: '', 
+        program: programs.length > 0 ? programs[0].code : '', current_year_level: 1, section: '' 
+    }));
     setSearchExisting(''); setFilterProgram(''); setFilterYear('');
+  };
+
+  const handleBackNavigation = () => {
+    setErrorMessage(''); 
+    if (modalStep === 'existing' || modalStep === 'new_edu') setModalStep('selection');
+    else if (modalStep === 'new_year') setModalStep('new_edu');
+    else if (modalStep === 'new_form') setModalStep('new_year');
   };
 
   const filteredRoster = enrollments.filter(e => {
@@ -129,6 +162,7 @@ const Students = () => {
     const yearLevel = String(e.student?.current_year_level || '');
     const matchesYear = rosterFilterYear === '' || yearLevel === rosterFilterYear;
     const rawSectionName = e.class_field?.section?.name || '';
+    
     let sectionName = rawSectionName;
     if (programCode && !rawSectionName.includes(programCode)) sectionName = `${programCode} ${rawSectionName}`;
     const matchesSection = rosterFilterSection === '' || sectionName.includes(rosterFilterSection);
@@ -138,9 +172,11 @@ const Students = () => {
   const filteredGlobal = availableStudents.filter(s => {
     const matchesSearch = `${s.first_name} ${s.last_name} ${s.student_number}`.toLowerCase().includes(searchExisting.toLowerCase());
     const matchesProgram = filterProgram === '' || s.program === filterProgram;
-    const matchesYear = filterYear === '' || s.current_year_level === filterYear;
+    const matchesYear = filterYear === '' || String(s.current_year_level) === String(filterYear);
     return matchesSearch && matchesProgram && matchesYear;
   });
+
+  const uniqueSections = Array.from(new Set(enrollments.map(e => e.class_field?.section?.name).filter(Boolean)));
 
   return (
     <div className="max-w-6xl animate-in fade-in duration-300 relative">
@@ -161,13 +197,16 @@ const Students = () => {
             <input type="text" placeholder="Search roster..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-400" />
           </div>
           <select value={rosterFilterProgram} onChange={(e) => setRosterFilterProgram(e.target.value)} className="w-32 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-amber-400">
-            <option value="">All Programs</option><option value="BSCS">BSCS</option><option value="BSN">BSN</option><option value="BSA">BSA</option><option value="BSEd">BSEd</option><option value="BSCrim">BSCrim</option>
+            <option value="">All Programs</option>
+            {programs.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
           </select>
           <select value={rosterFilterYear} onChange={(e) => setRosterFilterYear(e.target.value)} className="w-32 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-amber-400">
-            <option value="">All Years</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option>
+            <option value="">All Years</option>
+            {Array.from({length: 12}, (_, i) => i + 1).map(y => <option key={y} value={y}>{y}</option>)}
           </select>
           <select value={rosterFilterSection} onChange={(e) => setRosterFilterSection(e.target.value)} className="w-32 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:border-amber-400">
-            <option value="">All Blocks</option><option value="Block A">Block A</option><option value="Block B">Block B</option><option value="Block C">Block C</option>
+            <option value="">All Blocks</option>
+            {uniqueSections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
           </select>
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-500 font-medium bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 shrink-0">
@@ -223,7 +262,7 @@ const Students = () => {
       </div>
 
       {unenrollModalData && (
-        <div className="fixed inset-0 bg-[#1A1C29]/60 backdrop-blur-sm flex items-center justify-center z-60 p-4">
+        <div className="fixed inset-0 bg-[#1A1C29]/60 backdrop-blur-sm flex items-center justify-center z-70 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-6 text-center">
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><Trash2 size={32} /></div>
@@ -242,15 +281,29 @@ const Students = () => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#1A1C29]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+
+          {errorMessage && (
+            <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-100 animate-in slide-in-from-top-4 fade-in duration-300">
+              <div className="bg-red-50 border border-red-200 shadow-xl rounded-xl px-5 py-3 flex items-center gap-3">
+                <AlertTriangle size={20} className="text-red-500 shrink-0" />
+                <span className="text-sm font-bold text-red-700">{errorMessage}</span>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
             
             <div className="flex justify-between items-center p-6 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-3">
                 {modalStep !== 'selection' && (
-                  <button onClick={() => setModalStep('selection')} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"><ArrowLeft size={18} /></button>
+                  <button onClick={handleBackNavigation} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"><ArrowLeft size={18} /></button>
                 )}
                 <h2 className="text-xl font-serif font-bold text-[#1A1C29]">
-                  {modalStep === 'selection' ? 'Add Student' : modalStep === 'existing' ? 'Enroll Existing Student' : 'Create New Student'}
+                  {modalStep === 'selection' ? 'Add Student' : 
+                   modalStep === 'existing' ? 'Enroll Existing Student' : 
+                   modalStep === 'new_edu' ? 'Select Education Level' :
+                   modalStep === 'new_year' ? 'Select Year Level' :
+                   'Student Details'}
                 </h2>
               </div>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 hover:bg-gray-100 p-1.5 rounded-lg"><X size={20} /></button>
@@ -277,20 +330,22 @@ const Students = () => {
                   )}
                 </select>
 
-                <select 
+                <input 
+                  list="section-suggestions"
                   name="section" 
                   value={formData.section} 
                   onChange={(e) => setFormData({...formData, section: e.target.value})} 
-                  className="bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm font-bold text-[#1A1C29] focus:outline-none focus:border-amber-400 shadow-sm cursor-pointer"
-                >
-                  <option value="Block A">Block A</option>
-                  <option value="Block B">Block B</option>
-                  <option value="Block C">Block C</option>
-                </select>
+                  placeholder="e.g. Block A, Sec 1"
+                  className="bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm font-bold text-[#1A1C29] focus:outline-none focus:border-amber-400 shadow-sm cursor-text min-w-32"
+                />
+                <datalist id="section-suggestions">
+                    {uniqueSections.map(sec => <option key={sec} value={sec} />)}
+                </datalist>
               </div>
             )}
 
             <div className="overflow-y-auto">
+              
               {modalStep === 'selection' && (
                 <div className="p-8 grid grid-cols-2 gap-6 bg-gray-50 min-h-75 content-center">
                   <button onClick={fetchGlobalStudents} className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-2xl hover:border-amber-400 hover:shadow-md transition-all group">
@@ -298,7 +353,7 @@ const Students = () => {
                     <h3 className="text-lg font-bold text-[#1A1C29]">Existing Student</h3>
                     <p className="text-sm text-gray-500 text-center mt-2">Search and enroll from the global database</p>
                   </button>
-                  <button onClick={() => setModalStep('new')} className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-2xl hover:border-amber-400 hover:shadow-md transition-all group">
+                  <button onClick={() => setModalStep('new_edu')} className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-2xl hover:border-amber-400 hover:shadow-md transition-all group">
                     <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><UserPlus size={28} className="text-blue-500" /></div>
                     <h3 className="text-lg font-bold text-[#1A1C29]">New Student</h3>
                     <p className="text-sm text-gray-500 text-center mt-2">Create a brand new profile and enroll them</p>
@@ -314,7 +369,8 @@ const Students = () => {
                       <input type="text" placeholder="Search name or ID..." value={searchExisting} onChange={(e) => setSearchExisting(e.target.value)} className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:border-amber-400 focus:outline-none" />
                     </div>
                     <select value={filterProgram} onChange={(e) => setFilterProgram(e.target.value)} className="w-32 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-amber-400 focus:outline-none">
-                      <option value="">All Programs</option><option value="BSCS">BSCS</option><option value="BSN">BSN</option><option value="BSA">BSA</option><option value="BSEd">BSEd</option><option value="BSCrim">BSCrim</option>
+                      <option value="">All Programs</option>
+                      {programs.map(p => <option key={p.code} value={p.code}>{p.code}</option>)}
                     </select>
                   </div>
                   <div className="flex-1 overflow-y-auto p-2 bg-gray-50/50">
@@ -331,7 +387,10 @@ const Students = () => {
                               <p className="text-xs text-gray-500 mt-0.5">ID: {student.student_number} • {student.program} • Year {student.current_year_level}</p>
                             </div>
 
-                            <button onClick={() => handleEnroll({ ...student, subject: formData.subject, section: formData.section })} disabled={isSaving} className="px-4 py-1.5 bg-amber-100 hover:bg-amber-400 text-amber-900 font-bold text-sm rounded-lg transition-colors flex items-center gap-2">
+                            <button onClick={() => {
+                                if(!formData.section) { showError("Please type or select a Section/Block in the header above."); return;}
+                                handleEnroll({ ...student, subject: formData.subject, section: formData.section })
+                            }} disabled={isSaving} className="px-4 py-1.5 bg-amber-100 hover:bg-amber-400 text-amber-900 font-bold text-sm rounded-lg transition-colors flex items-center gap-2">
                               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />} Enroll
                             </button>
                           </div>
@@ -342,7 +401,38 @@ const Students = () => {
                 </div>
               )}
 
-              {modalStep === 'new' && (
+              {modalStep === 'new_edu' && (
+                <div className="p-8 grid grid-cols-2 gap-6 bg-gray-50 min-h-75 content-center">
+                  <button onClick={() => { setEduType('K-12'); setModalStep('new_year'); }} className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-2xl hover:border-emerald-400 hover:shadow-md transition-all group">
+                    <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><BookOpen size={28} className="text-emerald-500" /></div>
+                    <h3 className="text-lg font-bold text-[#1A1C29]">K-12 Student</h3>
+                    <p className="text-sm text-gray-500 text-center mt-2">Grade 1 through Grade 12</p>
+                  </button>
+                  <button onClick={() => { setEduType('College'); setModalStep('new_year'); }} className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group">
+                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><GraduationCap size={28} className="text-blue-500" /></div>
+                    <h3 className="text-lg font-bold text-[#1A1C29]">College Student</h3>
+                    <p className="text-sm text-gray-500 text-center mt-2">Undergraduate Degree Programs</p>
+                  </button>
+                </div>
+              )}
+
+              {modalStep === 'new_year' && (
+                <div className="p-8 bg-gray-50 min-h-75 flex flex-col items-center justify-center">
+                  <h3 className="text-lg font-bold text-[#1A1C29] mb-6">Select {eduType === 'K-12' ? 'Grade' : 'Year'} Level</h3>
+                  <div className={`grid gap-4 ${eduType === 'K-12' ? 'grid-cols-4' : 'grid-cols-2'} w-full max-w-lg`}>
+                    {eduType === 'K-12' 
+                      ? Array.from({length: 12}, (_, i) => i + 1).map(y => (
+                          <button key={y} onClick={() => { setFormData({...formData, current_year_level: y}); setModalStep('new_form'); }} className="p-4 bg-white border border-gray-200 rounded-xl hover:border-amber-400 hover:bg-amber-50 font-bold text-[#1A1C29] transition-colors">Grade {y}</button>
+                        ))
+                      : [1, 2, 3, 4].map(y => (
+                          <button key={y} onClick={() => { setFormData({...formData, current_year_level: y}); setModalStep('new_form'); }} className="p-4 bg-white border border-gray-200 rounded-xl hover:border-amber-400 hover:bg-amber-50 font-bold text-[#1A1C29] transition-colors">{y}{y===1?'st':y===2?'nd':y===3?'rd':'th'} Year</button>
+                        ))
+                    }
+                  </div>
+                </div>
+              )}
+
+              {modalStep === 'new_form' && (
                 <form onSubmit={handleNewStudentSubmit}>
                   <div className="p-6 space-y-4">
                     <div className="grid grid-cols-2 gap-4">
@@ -373,21 +463,22 @@ const Students = () => {
                           <option value="M">Male</option><option value="F">Female</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5">PROGRAM</label>
+                      <div className="col-span-2">
+                        <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5">ASSIGNED PROGRAM</label>
                         <select name="program" value={formData.program} onChange={(e) => setFormData({...formData, program: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-amber-400">
-                          <option value="BSCS">BSCS</option><option value="BSN">BSN</option><option value="BSA">BSA</option><option value="BSEd">BSEd</option><option value="BSCrim">BSCrim</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-500 tracking-wider mb-1.5">YEAR LEVEL</label>
-                        <select name="current_year_level" value={formData.current_year_level} onChange={(e) => setFormData({...formData, current_year_level: e.target.value})} className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-semibold focus:outline-none focus:border-amber-400">
-                          <option value={1}>1st Year</option><option value={2}>2nd Year</option><option value={3}>3rd Year</option><option value={4}>4th Year</option>
+                          {programs.length === 0 ? (
+                             <option value="">No programs available</option>
+                          ) : (
+                             programs.map(p => <option key={p.code} value={p.code}>{p.code} - {p.name}</option>)
+                          )}
                         </select>
                       </div>
                     </div>
                   </div>
-                  <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 shrink-0">
+                  <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-between items-center gap-3 shrink-0">
+                    <span className="text-xs font-bold text-gray-500 bg-white px-3 py-1.5 rounded border border-gray-200">
+                        Level: {eduType === 'K-12' ? 'Grade' : 'Year'} {formData.current_year_level}
+                    </span>
                     <button type="submit" disabled={isSaving} className="flex items-center space-x-2 px-5 py-2 rounded-lg text-sm font-bold bg-amber-400 hover:bg-amber-500 disabled:bg-amber-200 text-[#1A1C29] transition-colors shadow-sm">
                       {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                       <span>Create & Enroll</span>
@@ -395,6 +486,7 @@ const Students = () => {
                   </div>
                 </form>
               )}
+
             </div>
           </div>
         </div>
