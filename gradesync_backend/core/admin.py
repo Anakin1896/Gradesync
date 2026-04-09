@@ -6,4 +6,3 @@ admin.site.register(AcademicTerm)
 admin.site.register(Program)
 admin.site.register(Subject)
 admin.site.register(Period)
-

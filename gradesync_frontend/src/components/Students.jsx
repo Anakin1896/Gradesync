@@ -330,7 +330,7 @@ const Students = () => {
                               <p className="font-bold text-[#1A1C29]">{student.last_name}, {student.first_name}</p>
                               <p className="text-xs text-gray-500 mt-0.5">ID: {student.student_number} • {student.program} • Year {student.current_year_level}</p>
                             </div>
-                            {/* Uses the formData.subject & formData.section from the Amber bar! */}
+
                             <button onClick={() => handleEnroll({ ...student, subject: formData.subject, section: formData.section })} disabled={isSaving} className="px-4 py-1.5 bg-amber-100 hover:bg-amber-400 text-amber-900 font-bold text-sm rounded-lg transition-colors flex items-center gap-2">
                               {isSaving ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />} Enroll
                             </button>

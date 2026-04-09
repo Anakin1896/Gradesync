@@ -80,7 +80,6 @@ const Sidebar = ({ activeTab, setActiveTab, handleLogout }) => {
     <div className="w-64 h-full bg-[#1A1C29] text-white flex flex-col shrink-0">
 
       <div className="shrink-0">
-        {/* LOGO CENTERED HERE */}
         <div className="pt-6 pb-4 px-6 flex justify-center">
           <h1 className="text-2xl font-serif font-bold text-amber-400 text-center">
             Grade<span className="text-white">Sync</span>
