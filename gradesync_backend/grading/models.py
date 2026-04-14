@@ -204,3 +204,15 @@ class TemplateItem(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.weight_percentage}%"
+    
+class Notification(models.Model):
+    user = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='notifications')
+    message = models.CharField(max_length=255)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Notif for {self.user.username}: {self.message}"

@@ -9,6 +9,7 @@ import Grades from './components/Grades';
 import Activities from './components/Activities';
 import Attendance from './components/Attendance';
 import Settings from './components/Settings';
+import NotificationBell from './components/NotificationBell';
 
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -91,9 +92,7 @@ function App() {
             <div className="px-4 py-1.5 rounded-full border border-amber-200 bg-amber-50 text-amber-800 text-sm font-medium transition-all">
               {schoolYear}
             </div>
-            <button className="p-2 rounded-full bg-white border border-gray-200 text-amber-500 hover:bg-gray-50 transition-colors shadow-sm">
-              <Bell size={20} />
-            </button>
+            <NotificationBell />
           </div>
         </header>
 

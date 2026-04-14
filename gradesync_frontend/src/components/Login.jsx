@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, CheckCircle2, Eye, EyeOff, Lock, User, Key, ArrowRight, Loader2 } from 'lucide-react';
+import { Layers, CheckCircle2, Eye, EyeOff, Lock, User, Key, ArrowRight, Loader2, AlertTriangle, X } from 'lucide-react';
 
 const Login = () => {
   const [employeeId, setEmployeeId] = useState('');
@@ -15,6 +15,8 @@ const Login = () => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+
   const strength = {
     length: newPassword.length >= 8,
     uppercase: /[A-Z]/.test(newPassword),
@@ -28,7 +30,6 @@ const Login = () => {
     setErrorMsg('');
 
     try {
-
       const response = await fetch('http://127.0.0.1:8000/api/token/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,7 +39,6 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-
         localStorage.setItem('auth_token', data.access);
         localStorage.setItem('refresh_token', data.refresh);
 
@@ -69,7 +69,6 @@ const Login = () => {
 
   const handlePasswordResetSubmit = async (e) => {
     e.preventDefault();
-
     if (newPassword !== confirmPassword) {
       alert("Passwords do not match!");
       return;
@@ -81,7 +80,6 @@ const Login = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-
       const response = await fetch('http://127.0.0.1:8000/api/accounts/change-password/', {
         method: 'POST',
         headers: {
@@ -90,7 +88,6 @@ const Login = () => {
         },
         body: JSON.stringify({ new_password: newPassword })
       });
-
       if (response.ok) {
         setIsFirstLogin(false);
         window.location.reload();
@@ -144,7 +141,6 @@ const Login = () => {
           © BugSplat 2026 GradeSync · For Filipino Educators
         </div>
       </div>
-
 
       <div className="w-full lg:w-[45%] bg-[#111827] flex items-center justify-center p-8 sm:p-16 relative z-10">
         <div className="max-w-md w-full">
@@ -208,9 +204,13 @@ const Login = () => {
             </div>
 
             <div className="flex justify-end">
-              <a href="#" className="text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors">
+              <button 
+                type="button" 
+                onClick={() => setIsForgotModalOpen(true)}
+                className="text-sm font-medium text-amber-400 hover:text-amber-300 transition-colors"
+              >
                 Forgot password?
-              </a>
+              </button>
             </div>
 
             <button 
@@ -222,7 +222,6 @@ const Login = () => {
                 <>Sign In <ArrowRight size={18} /></>
               )}
             </button>
-
           </form>
 
           <div className="mt-12 pt-8 border-t border-gray-800/50 text-center">
@@ -235,9 +234,37 @@ const Login = () => {
         </div>
       </div>
 
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 bg-[#0B0F19]/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
+          <div className="bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 relative">
+             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-amber-400 blur-md opacity-60" />
+            <div className="flex justify-between items-center p-6 border-b border-gray-800/50">
+              <h2 className="text-lg font-serif font-bold text-white">Reset Password</h2>
+              <button onClick={() => setIsForgotModalOpen(false)} className="text-gray-400 hover:text-white transition-colors bg-[#1A2234] p-1.5 rounded-lg border border-gray-700 shadow-sm">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 text-center">
+              <div className="w-12 h-12 rounded-full border border-gray-700 bg-[#1A2234] flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <Lock className="text-amber-400" size={20} />
+              </div>
+              <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+                For security reasons, teacher passwords can only be reset by the IT Department. Please contact your school administrator to issue a temporary password.
+              </p>
+              <button 
+                onClick={() => setIsForgotModalOpen(false)}
+                className="w-full py-3 rounded-xl text-sm font-bold bg-amber-400 hover:bg-amber-500 text-[#0B0F19] transition-colors"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isFirstLogin && (
         <div className="absolute inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#111827] border border-gray-800 rounded-3xl max-w-105 w-full p-8 relative overflow-hidden shadow-2xl">
+          <div className="bg-[#111827] border border-gray-800 rounded-3xl max-w-lg w-full p-8 relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-2 bg-amber-400 blur-xl opacity-60" />
 
             <div className="mb-8">
@@ -247,7 +274,8 @@ const Login = () => {
               <p className="text-amber-400 text-xs font-bold tracking-[0.15em] uppercase mb-2">First Login Detected</p>
               <h3 className="text-3xl font-serif font-bold text-white mb-3">Set Your Password</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
-                You're logging in for the <strong className="text-white">first time</strong>. For your security, please create a new personal password before continuing.
+                You're logging in for the <strong className="text-white">first time</strong>.
+                For your security, please create a new personal password before continuing.
               </p>
             </div>
 

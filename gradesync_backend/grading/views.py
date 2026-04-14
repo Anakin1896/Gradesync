@@ -8,6 +8,8 @@ from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from .models import Notification, Event, Assessment
 from django.db.models import Avg, Max, Min
 from urllib.parse import unquote
 from .models import (
@@ -726,3 +728,42 @@ class StudentPeriodBreakdownView(APIView):
         except Exception as e:
             print(f"Drill-down breakdown error: {e}")
             return Response({'error': 'Failed to load breakdown'}, status=500)
+
+class NotificationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = timezone.now().date()
+
+        events_today = Event.objects.filter(teacher=request.user, date=today)
+        for event in events_today:
+            msg = f"Reminder: You have an event today — {event.title}"
+            
+            if not Notification.objects.filter(user=request.user, message=msg, created_at__date=today).exists():
+                Notification.objects.create(user=request.user, message=msg)
+
+        assessments_today = Assessment.objects.filter(
+            component__class_field__teacher=request.user,
+            date_given=today
+        )
+
+        for assessment in assessments_today:
+            subject_code = assessment.component.class_field.subject.code
+            msg = f"{assessment.assessment_type} Today: '{assessment.title}' for {subject_code}"
+            
+            if not Notification.objects.filter(user=request.user, message=msg, created_at__date=today).exists():
+                Notification.objects.create(user=request.user, message=msg)
+
+        notifs = Notification.objects.filter(user=request.user)[:10]
+        data = [{
+            "id": n.id, 
+            "message": n.message, 
+            "is_read": n.is_read, 
+            "date": n.created_at.strftime("%b %d")
+        } for n in notifs]
+        
+        return Response(data)
+
+    def post(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response({"message": "Notifications marked as read"})
