@@ -235,7 +235,7 @@ const Login = () => {
       </div>
 
       {isForgotModalOpen && (
-        <div className="fixed inset-0 bg-[#0B0F19]/80 backdrop-blur-sm flex items-center justify-center z-[70] p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-[#0B0F19]/80 backdrop-blur-sm flex items-center justify-center z-70 p-4 animate-in fade-in duration-200">
           <div className="bg-[#111827] border border-gray-800 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 relative">
              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-amber-400 blur-md opacity-60" />
             <div className="flex justify-between items-center p-6 border-b border-gray-800/50">
